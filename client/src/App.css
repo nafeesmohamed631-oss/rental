@@ -1,0 +1,462 @@
+/* SmartRent App Styles */
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background: #f5f7fb;
+}
+
+.app {
+  min-height: 100vh;
+}
+
+.auth {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.auth-hero {
+  padding: 40px;
+  max-width: 500px;
+}
+
+.auth-form-container {
+  padding: 30px;
+  width: 400px;
+}
+
+.auth-form-container form {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+input,
+select,
+textarea {
+  padding: 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+button {
+  cursor: pointer;
+}
+
+.btn {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #4f46e5;
+  color: white;
+  font-weight: bold;
+}
+
+.btn.full {
+  width: 100%;
+}
+
+.logo {
+  font-size: 25px;
+  font-weight: bold;
+  text-decoration: none;
+  color: #111827;
+}
+
+.logo span {
+  color: #4f46e5;
+}
+
+.logo.white {
+  color: white;
+}
+
+header {
+  height: 65px;
+  padding: 0 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: white;
+  border-bottom: 1px solid #ddd;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.app {
+  min-height: calc(100vh - 65px);
+}
+
+main {
+  padding: 30px;
+}
+
+aside {
+  width: 230px;
+  position: fixed;
+  top: 65px;
+  bottom: 0;
+  padding: 25px;
+  background: white;
+  border-right: 1px solid #ddd;
+}
+
+aside a {
+  display: flex;
+  gap: 10px;
+  padding: 12px;
+  margin-bottom: 8px;
+  text-decoration: none;
+  color: #374151;
+  border-radius: 6px;
+}
+
+aside a.active {
+  background: #eef2ff;
+  color: #4f46e5;
+}
+
+main {
+  margin-left: 230px;
+}
+
+.hero {
+  padding: 30px 0;
+}
+
+.hero h1 {
+  font-size: 40px;
+}
+
+.hero h1 span {
+  color: #4f46e5;
+}
+
+.stats {
+  display: flex;
+  gap: 15px;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
+}
+
+.stat {
+  background: white;
+  padding: 18px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  min-width: 200px;
+  display: flex;
+  gap: 12px;
+}
+
+.stat span {
+  display: block;
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.stat b {
+  display: block;
+  margin-top: 5px;
+}
+
+.toolbar {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 25px;
+}
+
+.search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: white;
+  border: 1px solid #ddd;
+  padding: 0 12px;
+  border-radius: 6px;
+}
+
+.search input {
+  border: none;
+  outline: none;
+}
+
+.cat-btn {
+  padding: 10px 15px;
+  border: 1px solid #ddd;
+  background: white;
+  border-radius: 6px;
+}
+
+.cat-btn.active {
+  background: #4f46e5;
+  color: white;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  gap: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #ddd;
+}
+
+.card img {
+  width: 100%;
+  height: 180px;
+  object-fit: cover;
+}
+
+.card-content {
+  padding: 18px;
+}
+
+.card-price {
+  font-size: 22px;
+  font-weight: bold;
+  margin: 10px 0;
+}
+
+.card-price span {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.days-chips {
+  display: flex;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+}
+
+.days-chips i {
+  background: #f3f4f6;
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-style: normal;
+  font-size: 12px;
+}
+
+.black-fitted-card {
+  background: white;
+  padding: 20px;
+  margin-bottom: 15px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+}
+
+.detail-card {
+  max-width: 900px;
+  margin: auto;
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+
+.detail-card > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.detail-info {
+  padding: 30px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.price-tag {
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.price-tag small {
+  font-size: 14px;
+}
+
+.pay-card {
+  background: white;
+  padding: 30px;
+  border-radius: 12px;
+  border: 1px solid #ddd;
+}
+
+.admin-form-grid {
+  background: white;
+  padding: 25px;
+  border-radius: 10px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+  margin-bottom: 30px;
+}
+
+.admin-form-grid label,
+.auth-form-container label {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.full-width {
+  grid-column: 1 / -1;
+}
+
+.btn-green {
+  background: #059669;
+}
+
+.btn-dark {
+  background: #111827;
+}
+
+.btn-red {
+  background: #dc2626;
+}
+
+.btn-sm {
+  padding: 8px 12px;
+  font-size: 12px;
+}
+
+.status-pill {
+  padding: 6px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+.status-approved {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status-pending {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status-rejected {
+  background: #fee2e2;
+  color: #991b1b;
+}
+
+.id-badge {
+  background: #eef2ff;
+  color: #4338ca;
+  padding: 5px 10px;
+  border-radius: 5px;
+  font-weight: bold;
+}
+
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-content {
+  background: white;
+  width: 500px;
+  max-width: 90%;
+  padding: 25px;
+  border-radius: 10px;
+}
+
+.modal-content > * {
+  margin-bottom: 10px;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.image-preview {
+  width: 120px;
+  height: 100px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+  margin-top: 10px;
+}
+
+.user-tag {
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.btn-logout {
+  border: none;
+  background: #fee2e2;
+  color: #991b1b;
+  padding: 8px 12px;
+  border-radius: 6px;
+}
+
+.page-title-box {
+  margin-bottom: 25px;
+}
+
+.page-title-box h1 {
+  margin-bottom: 5px;
+}
+
+.page-title-box p {
+  color: #6b7280;
+}
+
+@media (max-width: 800px) {
+  aside {
+    position: static;
+    width: 100%;
+  }
+
+  main {
+    margin-left: 0;
+  }
+
+  .detail-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-form-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .full-width {
+    grid-column: auto;
+  }
+
+  header {
+    padding: 0 15px;
+  }
+}
