@@ -28,6 +28,14 @@ import {
   User,
   Hash,
   Calendar
+  ,ArrowRight
+  ,ArrowLeft
+  ,Home
+  ,BookOpen
+  ,Camera
+  ,Laptop
+  ,Smartphone
+  ,Headphones
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
@@ -52,6 +60,9 @@ import './App.css';
 
 const GOOGLE_CLIENT_ID =
   '1040147130892-o2ku78mm60qhu42pvm4l0s1ss9ie9bos.apps.googleusercontent.com';
+
+const RAZORPAY_KEY =
+  import.meta.env.VITE_RAZORPAY_KEY || 'rzp_test_TWtdNerIsAqzSE';
 
 
 // ============================================================
@@ -126,27 +137,27 @@ function Layout({ admin = false, children }) {
         </Link>
 
         <div className="header-right">
-
-          <div className="user-tag">
-            <User
-              size={14}
-              style={{
-                display: 'inline',
-                marginRight: 4
-              }}
-            />
-
-            {user?.username || user?.name || user?.email}
-          </div>
-
-          <button
-            className="btn-logout"
-            onClick={logout}
-          >
-            <LogOut size={15} />
-            Logout
-          </button>
-
+          <Link className="home-link" to={admin ? '/admin' : '/browse'} title="Home">
+            <Home size={16} />
+            <span>Home</span>
+          </Link>
+          {user ? (
+            <>
+              <div className="user-tag">
+                <User size={14} />
+                {user.username || user.name || user.email}
+              </div>
+              <button className="btn-logout" onClick={logout}>
+                <LogOut size={15} />
+                Logout
+              </button>
+            </>
+          ) : (
+            <>
+              <Link className="guest-link" to="/login">Login</Link>
+              <Link className="guest-signup" to="/signup">Sign Up</Link>
+            </>
+          )}
         </div>
       </header>
 
@@ -759,6 +770,16 @@ function Auth({ signup = false }) {
 
       </div>
 
+      <div className="auth-visual" aria-hidden="true">
+        <div className="visual-orbit orbit-one" />
+        <div className="visual-orbit orbit-two" />
+        <div className="visual-device visual-laptop">LAPTOP</div>
+        <div className="visual-device visual-camera">CAMERA</div>
+        <div className="visual-device visual-books">BOOKS</div>
+        <div className="visual-device visual-phone">PHONE</div>
+        <div className="visual-platform" />
+      </div>
+
     </div>
   );
 }
@@ -845,24 +866,53 @@ function Browse() {
       <section className="hero">
 
         <small>
-          BROWSE • RENT • MANAGE
+          COLLEGE ESSENTIALS ON RENT
         </small>
 
         <h1>
-          Find what you need.
+          Get What You Need,
           <br />
           <span>
-            Rent it your way.
+            Only For the Time You Need
           </span>
         </h1>
 
         <p>
-          Explore item inventory with
-          flexible rental timelines.
-          Real-time availability and
-          dynamic tracking.
+          Rent laptops, cameras, books, mobiles and more —
+          affordable, flexible and hassle-free.
         </p>
 
+        <button className="btn hero-action" onClick={() => document.querySelector('.browse-products')?.scrollIntoView({ behavior: 'smooth' })}>
+          Browse Products <ArrowRight size={17} />
+        </button>
+
+      </section>
+
+
+      <section className="category-showcase">
+        <div className="showcase-heading">
+          <div>
+            <small>SHOP BY CATEGORY</small>
+            <h2>Explore Our Rental Categories</h2>
+          </div>
+          <button className="text-action" onClick={() => setSelectedCat('All')}>View All <ArrowRight size={15} /></button>
+        </div>
+
+        <div className="category-tiles">
+          {[
+            ['Books', BookOpen, 'Textbooks, reference books and more', 'linear-gradient(135deg, #245bc3, #173267)'],
+            ['Cameras', Camera, 'Capture your moments perfectly', 'linear-gradient(135deg, #126b71, #12374c)'],
+            ['Laptops', Laptop, 'Power your ideas anywhere', 'linear-gradient(135deg, #56429c, #27285d)'],
+            ['Mobiles', Smartphone, 'Stay connected always', 'linear-gradient(135deg, #76377e, #3d205b)']
+          ].map(([name, Icon, description, background]) => (
+            <button className="category-tile" key={name} style={{ background }} onClick={() => setSelectedCat(name)}>
+              <span className="category-icon"><Icon size={21} /></span>
+              <strong>{name}</strong>
+              <span>{description}</span>
+              <i><ArrowRight size={16} /></i>
+            </button>
+          ))}
+        </div>
       </section>
 
 
@@ -927,6 +977,15 @@ function Browse() {
       </div>
 
 
+      <section className="browse-products">
+      <div className="showcase-heading product-heading">
+        <div>
+          <small>POPULAR RENTALS</small>
+          <h2>Top Picks for You</h2>
+        </div>
+        <button className="text-action" onClick={() => setSelectedCat('All')}>View All <ArrowRight size={15} /></button>
+      </div>
+
       <div className="toolbar">
 
         <div className="search">
@@ -943,24 +1002,6 @@ function Browse() {
 
         </div>
 
-
-        {categories.map((c) => (
-
-          <button
-            key={c}
-            className={`cat-btn ${
-              selectedCat === c
-                ? 'active'
-                : ''
-            }`}
-            onClick={() =>
-              setSelectedCat(c)
-            }
-          >
-            {c}
-          </button>
-
-        ))}
 
       </div>
 
@@ -1063,6 +1104,8 @@ function Browse() {
 
       </div>
 
+      </section>
+
     </Layout>
   );
 }
@@ -1111,6 +1154,17 @@ function ProductDetails() {
   return (
 
     <Layout>
+
+      <div className="detail-navigation">
+        <button className="back-link" onClick={() => navigate(-1)} title="Go back">
+          <ArrowLeft size={18} />
+          <span>Back</span>
+        </button>
+        <Link className="home-link detail-home-link" to="/browse" title="Home">
+          <Home size={16} />
+          <span>Home</span>
+        </Link>
+      </div>
 
       <div className="detail-card">
 
@@ -1292,8 +1346,8 @@ function Payment() {
   const [mobile, setMobile] =
     useState('');
 
-  const [upi, setUpi] =
-    useState('');
+  const [isProcessing, setIsProcessing] =
+    useState(false);
 
 
   useEffect(() => {
@@ -1315,6 +1369,17 @@ function Payment() {
   );
 
 
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+
   const submitRequest =
     async () => {
 
@@ -1327,13 +1392,6 @@ function Payment() {
         );
 
       }
-
-
-      const genUpi =
-        `smartrent${mobile.slice(-4)}@upi`;
-
-      setUpi(genUpi);
-
 
       const startDate =
         new Date();
@@ -1356,7 +1414,7 @@ function Payment() {
               product: id,
               days,
               mobile,
-              upiId: genUpi,
+              upiId: '',
               startDate,
               endDate,
               uniqueId
@@ -1409,6 +1467,96 @@ function Payment() {
           'Rental request failed.'
         );
 
+      }
+    };
+
+
+  const handleRazorpayPayment =
+    async () => {
+
+      if (
+        !/^[6-9]\d{9}$/.test(mobile)
+      ) {
+
+        return alert(
+          'Please enter a valid 10-digit mobile number'
+        );
+
+      }
+
+      if (!p) return;
+
+      try {
+        setIsProcessing(true);
+
+        const razorpayLoaded =
+          await loadRazorpay();
+
+        if (!razorpayLoaded) {
+          alert(
+            'Razorpay SDK failed to load'
+          );
+          return;
+        }
+
+        const orderResponse =
+          await api.post(
+            '/payment/create-order',
+            { amount: total }
+          );
+
+        const order =
+          orderResponse.data.order;
+
+        const userData =
+          getUser() || {};
+
+        const razorpay = new window.Razorpay({
+          key: RAZORPAY_KEY,
+          amount: order.amount,
+          currency: order.currency,
+          name: 'SmartRent',
+          description: `Rental for ${p.name}`,
+          order_id: order.id,
+          handler: async function (paymentResponse) {
+            console.log(
+              'Razorpay Success:',
+              paymentResponse
+            );
+            await submitRequest();
+            setIsProcessing(false);
+          },
+          prefill: {
+            name:
+              userData.username ||
+              userData.name ||
+              'SmartRent User',
+            email:
+              userData.email ||
+              'user@example.com',
+            contact: mobile,
+          },
+          theme: {
+            color: '#3399cc'
+          },
+          modal: {
+            ondismiss: () => {
+              setIsProcessing(false);
+            }
+          }
+        });
+
+        razorpay.open();
+      } catch (error) {
+        console.error(
+          'Razorpay Error:',
+          error
+        );
+        setIsProcessing(false);
+        alert(
+          error.response?.data?.message ||
+          'Unable to create payment order'
+        );
       }
     };
 
@@ -1528,37 +1676,6 @@ function Payment() {
           />
 
 
-          <button
-            className="btn btn-dark"
-            onClick={() =>
-              /^[6-9]\d{9}$/.test(mobile) &&
-              setUpi(
-                `smartrent${mobile.slice(-4)}@upi`
-              )
-            }
-          >
-            Generate UPI ID
-          </button>
-
-
-          {upi && (
-
-            <div
-              className="status-pill status-approved"
-              style={{
-                width: '100%',
-                justifyContent:
-                  'center'
-              }}
-            >
-              ✓ Generated Payment UPI:
-              {' '}
-              {upi}
-            </div>
-
-          )}
-
-
           <div
             style={{
               background: '#0d0f17',
@@ -1621,12 +1738,15 @@ function Payment() {
 
           <button
             className="btn full btn-green"
-            onClick={submitRequest}
+            onClick={handleRazorpayPayment}
+            disabled={isProcessing}
             style={{
               marginTop: '10px'
             }}
           >
-            Pay & Send Request to Admin
+            {isProcessing
+              ? 'Processing Razorpay...'
+              : 'Pay Now & Send Request to Admin'}
           </button>
 
         </div>
@@ -3892,10 +4012,7 @@ export default function App() {
         <Route
           path="/"
           element={
-            <Navigate
-              to="/login"
-              replace
-            />
+            <Browse />
           }
         />
 
