@@ -6,14 +6,16 @@ import Product from './models/Product.js';
 
 await connectDB();
 
-// Seed only missing defaults. Existing accounts, products, rentals, and edits remain untouched.
+const adminHashedPassword = await bcrypt.hash('Admin@123', 12);
+
+// Ensure single admin account with email sudalai1234@gmail.com exists with admin role
 await User.updateOne(
-	{ email: 'admin@smartrent.local' },
+	{ email: 'sudalai1234@gmail.com' },
 	{
-		$setOnInsert: {
-			username: 'Admin',
-			email: 'admin@smartrent.local',
-			password: await bcrypt.hash('Admin@123', 12),
+		$set: {
+			username: 'Sudalai Admin',
+			email: 'sudalai1234@gmail.com',
+			password: adminHashedPassword,
 			role: 'admin'
 		}
 	},
@@ -54,5 +56,5 @@ if (await Product.countDocuments() === 0) {
 	}
 }
 
-console.log('Seed complete. Existing data was preserved.');
+console.log('Seed complete. Admin credentials set to sudalai1234@gmail.com.');
 process.exit(0);

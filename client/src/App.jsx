@@ -95,15 +95,14 @@ const createRentalId = () =>
 
 function Guard({ role, children }) {
   const user = getUser();
-
   const token = localStorage.getItem('token');
 
   if (!user || !token) {
     return <Navigate to="/login" replace />;
   }
 
-  if (role && user.role !== role) {
-    return <Navigate to="/login" replace />;
+  if (role === 'admin' && user.role !== 'admin') {
+    return <Navigate to="/browse" replace />;
   }
 
   return children;
@@ -477,312 +476,173 @@ function Auth({ signup = false }) {
 
 
   return (
-
-    <div className="auth">
-
-      {/* LEFT SIDE */}
-
-      <div className="auth-hero">
-
-        <div className="logo white">
-          Smart<span>Rent</span>
+    <div className="auth-modern-page">
+      {/* LEFT SIDE: Hero & Branding (White/Light Theme) */}
+      <div className="auth-left-hero">
+        <div className="hero-brand">
+          <Link to="/" className="logo-white-theme">
+            Smart<span>Rent</span>
+          </Link>
+          <span className="badge-pill">✨ Smart Rental Platform</span>
         </div>
 
-        <h1>
-          Rent Anything.
-          <br />
-          Manage Smartly.
-        </h1>
-
-        <p>
-          Premium rental management platform
-          with dynamic product tracking and
-          real-time approvals.
-        </p>
-
-      </div>
-
-
-      {/* RIGHT SIDE */}
-
-      <div className="auth-form-container">
-
-        <form
-          onSubmit={handleSubmit}
-        >
-
-          <h2>
-            {signup
-              ? 'Create Account'
-              : 'Welcome Back'}
-          </h2>
-
-
-          {/* USERNAME ONLY FOR SIGNUP */}
-
-          {signup && (
-            <>
-              <label>
-                Username
-              </label>
-
-              <input
-                value={f.username}
-                onChange={(e) =>
-                  setF({
-                    ...f,
-                    username:
-                      e.target.value
-                  })
-                }
-                required
-                placeholder="Enter username"
-              />
-            </>
-          )}
-
-
-          {/* EMAIL */}
-
-          <label>
-            Email Address
-          </label>
-
-          <input
-            type="email"
-            value={f.email}
-            onChange={(e) =>
-              setF({
-                ...f,
-                email: e.target.value
-              })
-            }
-            required
-            placeholder="Enter email"
-          />
-
-
-          {/* PASSWORD */}
-
-          <label>
-            Password
-          </label>
-
-          <input
-            type="password"
-            value={f.password}
-            onChange={(e) =>
-              setF({
-                ...f,
-                password: e.target.value
-              })
-            }
-            required
-            placeholder="••••••••"
-          />
-
-
-          {/* ROLE */}
-
-          {signup && (
-            <>
-              <label>
-                Account Role
-              </label>
-
-              <select
-                value={f.role}
-                onChange={(e) =>
-                  setF({
-                    ...f,
-                    role: e.target.value
-                  })
-                }
-              >
-
-                <option value="user">
-                  User (Customer)
-                </option>
-
-                <option value="admin">
-                  Admin Manager
-                </option>
-
-              </select>
-            </>
-          )}
-
-
-          {/* ERROR */}
-
-          {err && (
-            <div
-              className="status-pill status-rejected"
-              style={{
-                marginTop: '12px'
-              }}
-            >
-              {err}
-            </div>
-          )}
-
-
-          {/* NORMAL LOGIN BUTTON */}
-
-          <button
-            className="btn full"
-            type="submit"
-            disabled={googleLoading}
-          >
-            {signup
-              ? 'Create Account'
-              : 'Sign In'}
-          </button>
-
-
-          {/* DIVIDER */}
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '12px',
-              margin: '20px 0',
-              color: 'var(--text-muted)'
-            }}
-          >
-
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                background:
-                  'var(--border-color)'
-              }}
-            />
-
-            <span
-              style={{
-                fontSize: '12px',
-                fontWeight: 600
-              }}
-            >
-              OR
-            </span>
-
-            <div
-              style={{
-                flex: 1,
-                height: '1px',
-                background:
-                  'var(--border-color)'
-              }}
-            />
-
-          </div>
-
-
-          {/* GOOGLE LOGIN */}
-
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              width: '100%'
-            }}
-          >
-
-            {googleLoading ? (
-
-              <div
-                style={{
-                  padding: '10px',
-                  color:
-                    'var(--text-muted)',
-                  fontSize: '14px'
-                }}
-              >
-                Signing in with Google...
-              </div>
-
-            ) : (
-
-              <GoogleLogin
-                onSuccess={
-                  handleGoogleSuccess
-                }
-                onError={
-                  handleGoogleError
-                }
-                useOneTap={false}
-                theme="outline"
-                size="large"
-                text={
-                  signup
-                    ? 'signup_with'
-                    : 'signin_with'
-                }
-                shape="rectangular"
-                width="300"
-              />
-
-            )}
-
-          </div>
-
-
-          {/* SWITCH LOGIN/SIGNUP */}
-
-          <p
-            style={{
-              textAlign: 'center',
-              fontSize: '13px',
-              color:
-                'var(--text-muted)',
-              marginTop: '18px'
-            }}
-          >
-
-            {signup
-              ? 'Already registered? '
-              : 'New to SmartRent? '}
-
-            <Link
-              to={
-                signup
-                  ? '/login'
-                  : '/signup'
-              }
-              style={{
-                color:
-                  'var(--accent-indigo)',
-                fontWeight: 700
-              }}
-            >
-              {signup
-                ? 'Sign In'
-                : 'Register Now'}
-            </Link>
-
+        <div className="hero-content">
+          <h1>
+            Rent Anything.<br />
+            <span>Live Smarter.</span>
+          </h1>
+          <p>
+            The easiest way to rent books, cameras, laptops, and equipment with flexible 1–7 day plans.
           </p>
 
-        </form>
+          <div className="feature-cards-list">
+            <div className="feature-mini-card">
+              <div className="feature-icon">⚡</div>
+              <div>
+                <h4>Instant 1–7 Day Rentals</h4>
+                <p>Choose exact duration with dynamic daily pricing.</p>
+              </div>
+            </div>
 
+            <div className="feature-mini-card">
+              <div className="feature-icon">🛡️</div>
+              <div>
+                <h4>Verified Inventory</h4>
+                <p>All items checked for quality & damage protection.</p>
+              </div>
+            </div>
+          </div>
+
+          {/* SINGLE ADMIN CREDENTIALS DISPLAY */}
+          <div className="admin-demo-card">
+            <div className="admin-demo-header">
+              <ShieldCheck size={18} />
+              <span>Single Admin Account Credentials</span>
+            </div>
+            <p style={{ fontSize: '12px', color: '#64748b', margin: '4px 0 8px' }}>
+              System Admin login details for platform management:
+            </p>
+            <div className="admin-cred-row">
+              <span>Email: <b>sudalai1234@gmail.com</b></span>
+            </div>
+            <div className="admin-cred-row">
+              <span>Password: <b>Admin@123</b></span>
+            </div>
+            <button
+              type="button"
+              className="btn-fill-admin"
+              onClick={() => setF({ ...f, email: 'sudalai1234@gmail.com', password: 'Admin@123' })}
+            >
+              ⚡ One-Click Auto-Fill Admin Login
+            </button>
+          </div>
+        </div>
+
+        <div className="hero-footer">
+          <small>© 2026 SmartRent Inc. All rights reserved.</small>
+        </div>
       </div>
 
-      <div className="auth-visual" aria-hidden="true">
-        <div className="visual-orbit orbit-one" />
-        <div className="visual-orbit orbit-two" />
-        <div className="visual-device visual-laptop">LAPTOP</div>
-        <div className="visual-device visual-camera">CAMERA</div>
-        <div className="visual-device visual-books">BOOKS</div>
-        <div className="visual-device visual-phone">PHONE</div>
-        <div className="visual-platform" />
-      </div>
+      {/* RIGHT SIDE: White Form Container */}
+      <div className="auth-right-container">
+        <div className="auth-card-white">
+          {/* Header & Toggle */}
+          <div className="auth-header-toggle">
+            <div className="auth-tabs">
+              <Link to="/login" className={`tab-btn ${!signup ? 'active' : ''}`}>
+                Sign In
+              </Link>
+              <Link to="/signup" className={`tab-btn ${signup ? 'active' : ''}`}>
+                Create Account
+              </Link>
+            </div>
+          </div>
 
+          <div className="auth-title-section">
+            <h2>{signup ? 'Create your account' : 'Welcome back'}</h2>
+            <p>{signup ? 'Join SmartRent to start renting items today' : 'Enter your credentials to access your account'}</p>
+          </div>
+
+          <form onSubmit={handleSubmit}>
+            {signup && (
+              <div className="form-group">
+                <label>Username</label>
+                <input
+                  value={f.username}
+                  onChange={(e) => setF({ ...f, username: e.target.value })}
+                  required
+                  placeholder="e.g. John Doe"
+                />
+              </div>
+            )}
+
+            <div className="form-group">
+              <label>Email Address</label>
+              <input
+                type="email"
+                value={f.email}
+                onChange={(e) => setF({ ...f, email: e.target.value })}
+                required
+                placeholder="name@example.com"
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Password</label>
+              <input
+                type="password"
+                value={f.password}
+                onChange={(e) => setF({ ...f, password: e.target.value })}
+                required
+                placeholder="••••••••"
+              />
+            </div>
+
+            {err && (
+              <div className="error-alert-white">
+                <AlertTriangle size={16} />
+                <span>{err}</span>
+              </div>
+            )}
+
+            <button className="btn-modern-primary" type="submit" disabled={googleLoading}>
+              {signup ? 'Create Account' : 'Sign In'}
+            </button>
+
+            <div className="divider-line">
+              <span>OR</span>
+            </div>
+
+            <div className="google-btn-wrapper">
+              {googleLoading ? (
+                <div className="google-loading-text">Signing in with Google...</div>
+              ) : (
+                <GoogleLogin
+                  onSuccess={handleGoogleSuccess}
+                  onError={handleGoogleError}
+                  useOneTap={false}
+                  theme="outline"
+                  size="large"
+                  text={signup ? 'signup_with' : 'signin_with'}
+                  shape="rectangular"
+                  width="360"
+                />
+              )}
+            </div>
+          </form>
+
+          <p className="auth-footer-link">
+            {signup ? 'Already registered? ' : 'New to SmartRent? '}
+            <Link to={signup ? '/login' : '/signup'}>
+              {signup ? 'Sign In' : 'Create Account'}
+            </Link>
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
+
 
 
 // ============================================================
@@ -2711,107 +2571,56 @@ function ManageProducts() {
 
 
       {products.map((x) => (
-
-        <div
-          className="black-fitted-card"
-          key={x._id}
-        >
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '16px'
-            }}
-          >
-
+        <div className="black-fitted-card" key={x._id}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             <img
-              src={
-                x.image ||
-                'https://images.unsplash.com/photo-1544947950-fa07a98d237f'
-              }
+              src={x.image || 'https://images.unsplash.com/photo-1544947950-fa07a98d237f'}
               alt={x.name}
-              style={{
-                width: '60px',
-                height: '60px',
-                borderRadius: '10px',
-                objectFit: 'cover'
-              }}
+              style={{ width: '60px', height: '60px', borderRadius: '10px', objectFit: 'cover' }}
             />
-
-
             <div>
-
-              <b
-                style={{
-                  fontSize: '17px',
-                  color:
-                    'var(--text-main)'
-                }}
-              >
-                {x.name}
-              </b>
-
-              <p
-                style={{
-                  color:
-                    'var(--text-muted)',
-                  fontSize: '13px',
-                  marginTop: '2px'
-                }}
-              >
-                Category:
-                {' '}
-                <b>
-                  {x.category}
-                </b>
-                {' • '}
-                Count:
-                {' '}
-                <b>
-                  {x.productCount || 1}
-                </b>
-                {' • '}
-                ₹{x.pricePerDay}/day
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <b style={{ fontSize: '17px', color: 'var(--text-main)' }}>{x.name}</b>
+                <span
+                  className={`status-pill status-${x.status === 'available' ? 'approved' : x.status === 'rented' ? 'pending' : 'rejected'}`}
+                  style={{ fontSize: '10px', padding: '3px 8px' }}
+                >
+                  STATUS: {x.status?.toUpperCase() || 'AVAILABLE'}
+                </span>
+              </div>
+              <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '4px' }}>
+                Category: <b>{x.category}</b> • Count: <b>{x.productCount || 1}</b> • ₹{x.pricePerDay}/day
               </p>
-
             </div>
-
           </div>
 
-
-          <div
-            style={{
-              display: 'flex',
-              gap: '10px'
-            }}
-          >
-
-            <button
-              className="btn btn-dark btn-sm"
-              onClick={() =>
-                startEdit(x)
-              }
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <select
+              value={x.status || 'available'}
+              onChange={async (e) => {
+                try {
+                  await api.put('/products/' + x._id, { status: e.target.value });
+                  loadProducts();
+                } catch (err) {
+                  alert(err.response?.data?.message || 'Unable to update status');
+                }
+              }}
+              style={{ padding: '7px 10px', fontSize: '12px', borderRadius: '8px', width: 'auto', background: '#151926', color: '#fff', border: '1px solid var(--border-light)', cursor: 'pointer' }}
             >
-              <Edit size={16} />
-              Edit
+              <option value="available">Status: Available</option>
+              <option value="rented">Status: Rented Out</option>
+              <option value="inactive">Status: Maintenance/Inactive</option>
+            </select>
+
+            <button className="btn btn-dark btn-sm" onClick={() => startEdit(x)}>
+              <Edit size={16} /> Edit
             </button>
 
-
-            <button
-              className="btn btn-red btn-sm"
-              onClick={() =>
-                deleteProduct(x._id)
-              }
-            >
-              <Trash2 size={16} />
-              Delete
+            <button className="btn btn-red btn-sm" onClick={() => deleteProduct(x._id)}>
+              <Trash2 size={16} /> Delete
             </button>
-
           </div>
-
         </div>
-
       ))}
 
     </Layout>
@@ -2825,14 +2634,115 @@ function ManageProducts() {
 
 function RentalRequests() {
 
-  const [requests, setRequests] =
-    useState([]);
+  const [requests, setRequests] = useState([]);
+  const [editRental, setEditRental] = useState(null);
+  const [damageRental, setDamageRental] = useState(null);
+  const [billRental, setBillRental] = useState(null);
 
-  const [editRental, setEditRental] =
-    useState(null);
+  const exportRentalBillPDF = (rental) => {
+    const doc = new jsPDF();
+    const invNo = `INV-2026-${rental.uniqueId || 'IDX3251'}`;
 
-  const [damageRental, setDamageRental] =
-    useState(null);
+    // Header Banner
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 45, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SMARTRENT - OFFICIAL RENTAL BILL', 15, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Smart Equipment Rentals & Management System', 15, 33);
+    doc.text(`Invoice No: ${invNo}`, 135, 33);
+
+    // Customer & Rental Details Box
+    let y = 60;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILL TO (CUSTOMER DETAILS):', 15, y);
+    doc.text('RENTAL SUMMARY:', 120, y);
+
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Name: ${rental.user?.username || 'Customer'}`, 15, y);
+    doc.text(`Rental ID: ${rental.uniqueId || 'IDX3251'}`, 120, y);
+
+    y += 6;
+    doc.text(`Email: ${rental.user?.email || 'N/A'}`, 15, y);
+    doc.text(`Rental Duration: ${rental.days} Days`, 120, y);
+
+    y += 6;
+    doc.text(`Mobile: ${rental.mobile || 'N/A'}`, 15, y);
+    doc.text(`Start Date: ${new Date(rental.startDate).toLocaleDateString()}`, 120, y);
+
+    y += 6;
+    doc.text(`Status: COMPLETED & RETURNED`, 15, y);
+    doc.text(`End Date: ${new Date(rental.endDate).toLocaleDateString()}`, 120, y);
+
+    // Line separator
+    y += 12;
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, y, 195, y);
+
+    // Items Table Header
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, y, 180, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('ITEM DESCRIPTION', 20, y + 7);
+    doc.text('CATEGORY', 95, y + 7);
+    doc.text('DURATION', 135, y + 7);
+    doc.text('TOTAL AMOUNT (Rs.)', 160, y + 7);
+
+    // Table Row
+    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${rental.product?.name || 'Rental Item'}`, 20, y);
+    doc.text(`${rental.product?.category || 'General'}`, 95, y);
+    doc.text(`${rental.days} Days`, 135, y);
+    doc.text(`Rs. ${rental.totalAmount || 0}`, 160, y);
+
+    // Damage fine row if applicable
+    if (rental.damageReport?.isDamaged) {
+      y += 10;
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Damage Fine Penalty (${rental.damageReport.damageDetails || 'Item Damage'})`, 20, y);
+      doc.text(`+ Rs. ${rental.damageReport.damageCost || 0}`, 160, y);
+      doc.setTextColor(30, 41, 59);
+    }
+
+    // Summary Totals Box
+    y += 20;
+    doc.setLineWidth(0.5);
+    doc.line(15, y, 195, y);
+
+    y += 12;
+    const damageCost = rental.damageReport?.isDamaged ? (rental.damageReport.damageCost || 0) : 0;
+    const grandTotal = (rental.totalAmount || 0) + damageCost;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL AMOUNT PAID:', 110, y);
+    doc.setTextColor(79, 70, 229);
+    doc.text(`Rs. ${grandTotal}`, 165, y);
+
+    // Footer / Signatures
+    y += 40;
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Thank you for renting with SmartRent!', 15, y);
+    doc.text('Authorized Admin Signature: _______________________', 115, y);
+
+    doc.save(`Rental_Bill_${rental.uniqueId || 'IDX3251'}.pdf`);
+  };
+
 
 
   const loadRequests = () => {
@@ -3491,6 +3401,26 @@ function RentalRequests() {
 
             )}
 
+            {/* REAL-TIME PROCESS LIFECYCLE MONITORING TRACKER */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800, letterSpacing: '0.5px' }}>LIFECYCLE MONITORING:</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.4)' }}>
+                1. REQUESTED
+              </span>
+              <span style={{ color: '#475569', fontSize: '10px' }}>➔</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: (x.status === 'approved' || x.status === 'returned') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: (x.status === 'approved' || x.status === 'returned') ? '#10b981' : '#64748b', border: `1px solid ${(x.status === 'approved' || x.status === 'returned') ? 'rgba(16, 185, 129, 0.4)' : '#2d354e'}` }}>
+                2. APPROVED & ACTIVE
+              </span>
+              <span style={{ color: '#475569', fontSize: '10px' }}>➔</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: x.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: x.status === 'returned' ? '#10b981' : '#64748b', border: `1px solid ${x.status === 'returned' ? 'rgba(16, 185, 129, 0.4)' : '#2d354e'}` }}>
+                3. RETURNED & INSPECTED
+              </span>
+              <span style={{ color: '#475569', fontSize: '10px' }}>➔</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: x.status === 'returned' ? 'rgba(16, 185, 129, 0.25)' : 'rgba(255,255,255,0.05)', color: x.status === 'returned' ? '#10b981' : '#64748b', border: `1px solid ${x.status === 'returned' ? 'rgba(16, 185, 129, 0.4)' : '#2d354e'}` }}>
+                4. BILLED & CLOSED
+              </span>
+            </div>
+
           </div>
 
 
@@ -3563,6 +3493,15 @@ function RentalRequests() {
 
             )}
 
+            {x.status === 'returned' && (
+              <button
+                className="btn btn-green btn-sm"
+                onClick={() => setBillRental(x)}
+              >
+                <FileText size={16} /> Generate & View Bill
+              </button>
+            )}
+
 
             <button
               className="btn btn-dark btn-sm"
@@ -3598,7 +3537,7 @@ function RentalRequests() {
                 <FileText
                   size={16}
                 />
-                Download PDF
+                Download Damage PDF
               </button>
 
             )}
@@ -3986,6 +3925,74 @@ function RentalRequests() {
 
       )}
 
+      {/* RENTAL BILL / TAX INVOICE MODAL */}
+      {billRental && (
+        <div className="modal-overlay">
+          <div className="modal-content" style={{ maxWidth: '580px', background: '#111420', color: '#fff' }}>
+            <div className="modal-header">
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontFamily: 'Outfit' }}>
+                <FileText size={20} color="#10b981" /> Official Rental Invoice & Bill
+              </h3>
+              <button className="btn-logout" onClick={() => setBillRental(null)}>X</button>
+            </div>
+
+            <div style={{ background: '#151926', border: '1px solid var(--border-light)', padding: '20px', borderRadius: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '14px', borderBottom: '1px solid var(--border-light)', paddingBottom: '10px' }}>
+                <div>
+                  <span style={{ fontSize: '12px', color: 'var(--text-sub)' }}>Invoice No:</span>
+                  <b style={{ display: 'block', color: 'var(--accent-indigo)', fontSize: '15px' }}>INV-2026-{billRental.uniqueId || 'IDX3251'}</b>
+                </div>
+                <span className="status-pill status-approved">RETURNED & PAID</span>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '13px', marginBottom: '14px' }}>
+                <div>
+                  <span style={{ color: 'var(--text-sub)' }}>Customer Name:</span>
+                  <p style={{ fontWeight: '700', margin: '2px 0' }}>{billRental.user?.username || 'Customer'}</p>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '12px', margin: 0 }}>{billRental.user?.email}</p>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-sub)' }}>Contact Mobile:</span>
+                  <p style={{ fontWeight: '700', margin: '2px 0' }}>{billRental.mobile || 'N/A'}</p>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-sub)' }}>Product Name:</span>
+                  <p style={{ fontWeight: '700', margin: '2px 0' }}>{billRental.product?.name || 'Item'}</p>
+                </div>
+                <div>
+                  <span style={{ color: 'var(--text-sub)' }}>Category:</span>
+                  <p style={{ fontWeight: '700', margin: '2px 0' }}>{billRental.product?.category || 'General'}</p>
+                </div>
+              </div>
+
+              <div style={{ background: '#0d0f17', border: '1px solid var(--border-color)', borderRadius: '10px', padding: '14px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px', color: 'var(--text-muted)' }}>
+                  <span>Rental Period ({billRental.days} Days):</span>
+                  <span>₹{billRental.totalAmount || 0}</span>
+                </div>
+                {billRental.damageReport?.isDamaged && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: 'var(--accent-red)', marginBottom: '6px' }}>
+                    <span>Damage Penalty Fine ({billRental.damageReport.damageDetails || 'Damage'}):</span>
+                    <span>+ ₹{billRental.damageReport.damageCost || 0}</span>
+                  </div>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '18px', fontWeight: '800', color: 'var(--accent-green)', borderTop: '1px solid var(--border-light)', paddingTop: '10px', marginTop: '6px' }}>
+                  <span>Grand Total Amount:</span>
+                  <span>₹{(billRental.totalAmount || 0) + (billRental.damageReport?.isDamaged ? (billRental.damageReport.damageCost || 0) : 0)}</span>
+                </div>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', marginTop: '12px' }}>
+              <button className="btn btn-green full" onClick={() => exportRentalBillPDF(billRental)}>
+                <FileText size={18} /> Download Official PDF Bill
+              </button>
+              <button className="btn btn-dark" onClick={() => setBillRental(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </Layout>
   );
 }
@@ -4012,7 +4019,7 @@ export default function App() {
         <Route
           path="/"
           element={
-            <Browse />
+            getUser()?.role === 'admin' ? <Navigate to="/admin" replace /> : <Browse />
           }
         />
 
