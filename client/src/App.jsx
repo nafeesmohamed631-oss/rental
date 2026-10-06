@@ -222,85 +222,163 @@ function formatNotifTime(dateStr) {
   return new Date(dateStr).toLocaleDateString();
 }
 
-function NotificationBell({ notifData, admin = false }) {
-  const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate();
-  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = notifData;
+// ============================================================
+// NOTIFICATION HISTORY MODAL (FULL MONGODB AUDIT TRAIL)
+// ============================================================
+
+function NotificationHistoryModal({ notif, onClose, admin = false }) {
+  const [historyData, setHistoryData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!notif) return;
+    const uid = notif.uniqueId || notif.rental?.uniqueId;
+    if (uid) {
+      api.get(`/notifications/history/${uid}`)
+        .then((res) => {
+          setHistoryData(res.data);
+          setLoading(false);
+        })
+        .catch(() => {
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [notif]);
+
+  if (!notif) return null;
+
+  const rental = historyData?.rental || notif.rental || {};
+  const timeline = historyData?.timeline || [];
+  const meta = notif.meta || {};
+
+  return (
+    <div className="history-modal-overlay" onClick={onClose}>
+      <div className="history-modal-card" onClick={(e) => e.stopPropagation()}>
+        <div className="history-modal-header">
+          <div>
+            <span className="id-badge" style={{ fontSize: '11px', padding: '3px 10px', marginBottom: '6px', display: 'inline-block' }}>
+              #{notif.uniqueId || rental.uniqueId || 'SYSTEM'}
+            </span>
+            <h3>{notif.title}</h3>
+            <span style={{ fontSize: '12px', color: '#64748b' }}>
+              Logged on {new Date(notif.createdAt).toLocaleString()}
+            </span>
+          </div>
+          <button className="btn-logout" onClick={onClose}>
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="history-modal-body">
+          {/* RENTAL SUMMARY AUDIT BOX */}
+          <div className="history-meta-box">
+            <div className="history-meta-item">
+              <span>Rental ID</span>
+              <b>#{notif.uniqueId || rental.uniqueId || 'N/A'}</b>
+            </div>
+            <div className="history-meta-item">
+              <span>Product</span>
+              <b>{meta.productName || rental.product?.name || 'Rental Item'}</b>
+            </div>
+            <div className="history-meta-item">
+              <span>Amount Paid</span>
+              <b style={{ color: '#10b981' }}>₹{meta.amount || rental.totalAmount || 0}</b>
+            </div>
+            <div className="history-meta-item">
+              <span>Duration</span>
+              <b>{meta.days || rental.days || 1} Day(s)</b>
+            </div>
+            <div className="history-meta-item">
+              <span>Contact Mobile</span>
+              <b>{meta.customerMobile || rental.mobile || 'N/A'}</b>
+            </div>
+            <div className="history-meta-item">
+              <span>Live Status</span>
+              <b style={{ textTransform: 'uppercase', color: '#4f46e5' }}>{rental.status || meta.status || notif.type}</b>
+            </div>
+          </div>
+
+          {/* TIMELINE JOURNEY STORED IN MONGODB */}
+          <div className="history-timeline-section">
+            <h4>
+              <Clock3 size={16} /> Complete MongoDB Lifecycle History & Messages
+            </h4>
+
+            <div className="history-timeline-list">
+              {timeline.length > 0 ? (
+                timeline.map((item, idx) => {
+                  const { cls, icon } = getNotifIconInfo(item.type);
+                  return (
+                    <div key={item._id || idx} className="history-timeline-item">
+                      <div className={`history-timeline-dot ${cls.replace('notif-icon-', 'dot-')}`}>
+                        {idx + 1}
+                      </div>
+                      <div className="history-timeline-title">
+                        <span>{item.title}</span>
+                        <span className="history-timeline-time">{new Date(item.createdAt).toLocaleTimeString()}</span>
+                      </div>
+                      <p className="history-timeline-desc">{item.message}</p>
+                      <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '4px' }}>
+                        <span className="history-timeline-badge">{item.type.replace('_', ' ').toUpperCase()}</span>
+                        <span style={{ fontSize: '11px', color: '#94a3b8' }}>&bull; {new Date(item.createdAt).toLocaleDateString()}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="history-timeline-item">
+                  <div className="history-timeline-dot">1</div>
+                  <div className="history-timeline-title">
+                    <span>{notif.title}</span>
+                    <span className="history-timeline-time">{new Date(notif.createdAt).toLocaleTimeString()}</span>
+                  </div>
+                  <p className="history-timeline-desc">{notif.message}</p>
+                  <span className="history-timeline-badge">{notif.type.replace('_', ' ').toUpperCase()}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="history-modal-footer">
+          <Link
+            to={admin ? '/admin/requests' : '/rentals'}
+            className="btn btn-green btn-sm"
+            style={{ textDecoration: 'none' }}
+            onClick={onClose}
+          >
+            {admin ? 'Go to Admin Requests & Approvals' : 'Go to My Rentals'} &rarr;
+          </Link>
+          <button className="btn btn-dark btn-sm" onClick={onClose}>
+            Close History
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function NotificationBell({ notifData, admin = false, onSelectHistory }) {
+  const user = getUser();
+  const location = useLocation();
+  const isAdmin = Boolean(admin || user?.role === 'admin' || location.pathname.startsWith('/admin'));
+  const notifUrl = isAdmin ? '/admin/notifications' : '/notifications';
+  const unreadCount = notifData?.unreadCount || 0;
 
   return (
     <div className="notif-container">
-      <button
-        type="button"
+      <Link
+        to={notifUrl}
         className="notif-bell-btn"
-        onClick={() => setIsOpen(!isOpen)}
-        title="Notifications & Messages"
+        title="Live Notifications & Activity"
       >
         <Bell size={18} />
         {unreadCount > 0 && (
           <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
         )}
-      </button>
-
-      {isOpen && (
-        <div className="notif-dropdown">
-          <div className="notif-header">
-            <h4>
-              <Bell size={16} /> Notifications & Messages
-            </h4>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {unreadCount > 0 && (
-                <button type="button" className="notif-read-all" onClick={markAllAsRead}>
-                  Mark all read
-                </button>
-              )}
-              <Link
-                to={admin ? '/admin/notifications' : '/notifications'}
-                className="notif-read-all"
-                style={{ color: '#0f172a', fontWeight: 'bold' }}
-                onClick={() => setIsOpen(false)}
-              >
-                View All &rarr;
-              </Link>
-            </div>
-          </div>
-
-          <div className="notif-list">
-            {notifications.length > 0 ? (
-              notifications.slice(0, 8).map((n) => {
-                const { cls, icon } = getNotifIconInfo(n.type);
-                return (
-                  <div key={n._id} className={`notif-item ${!n.isRead ? 'unread' : ''}`}>
-                    <div className={`notif-icon ${cls}`}>
-                      {icon}
-                    </div>
-                    <div className="notif-body">
-                      <div className="notif-title-row">
-                        <span className="notif-title">{n.title}</span>
-                        <span className="notif-time">{formatNotifTime(n.createdAt)}</span>
-                      </div>
-                      <p className="notif-msg">{n.message}</p>
-                      <div className="notif-actions">
-                        {!n.isRead && (
-                          <button type="button" className="notif-btn-sm" onClick={(e) => markAsRead(n._id, e)}>
-                            Mark read
-                          </button>
-                        )}
-                        <button type="button" className="notif-btn-sm" onClick={(e) => deleteNotification(n._id, e)}>
-                          Dismiss
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            ) : (
-              <div className="notif-empty">
-                No notifications or messages yet.
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </Link>
     </div>
   );
 }
@@ -314,7 +392,10 @@ function Layout({ admin = false, children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = getUser();
+  const isAdmin = Boolean(admin || user?.role === 'admin' || location.pathname.startsWith('/admin'));
+  const homeTarget = isAdmin ? '/admin' : (user ? '/browse' : '/login');
   const notifData = useRealtimeNotifications();
+  const [selectedHistoryNotif, setSelectedHistoryNotif] = useState(null);
 
   const logout = () => {
     localStorage.removeItem('token');
@@ -324,22 +405,42 @@ function Layout({ admin = false, children }) {
 
   return (
     <>
+      {/* NOTIFICATION HISTORY MODAL */}
+      {selectedHistoryNotif && (
+        <NotificationHistoryModal
+          notif={selectedHistoryNotif}
+          onClose={() => setSelectedHistoryNotif(null)}
+          admin={isAdmin}
+        />
+      )}
+
       {/* FLOATING REAL-TIME TOAST NOTIFICATIONS */}
       {notifData.toasts && notifData.toasts.length > 0 && (
         <div className="toast-container">
           {notifData.toasts.map((toast) => {
             const { toastCls, icon } = getNotifIconInfo(toast.type);
             return (
-              <div key={toast._id} className={`realtime-toast ${toastCls}`}>
+              <div
+                key={toast._id}
+                className={`realtime-toast ${toastCls}`}
+                onClick={() => setSelectedHistoryNotif(toast)}
+                style={{ cursor: 'pointer' }}
+              >
                 <div className="toast-icon-box">{icon}</div>
                 <div className="toast-content">
                   <div className="toast-title">{toast.title}</div>
                   <p className="toast-message">{toast.message}</p>
+                  <span style={{ fontSize: '11px', color: '#4f46e5', fontWeight: '600', marginTop: '2px', display: 'block' }}>
+                    Click to view MongoDB history &rarr;
+                  </span>
                 </div>
                 <button
                   type="button"
                   className="toast-close-btn"
-                  onClick={() => notifData.removeToast(toast._id)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    notifData.removeToast(toast._id);
+                  }}
                 >
                   <X size={15} />
                 </button>
@@ -352,19 +453,24 @@ function Layout({ admin = false, children }) {
       <header>
         <Link
           className="logo"
-          to={admin ? '/admin' : '/browse'}
+          to={homeTarget}
+          title="SmartRent Home"
         >
           Smart<span>Rent</span>
         </Link>
 
         <div className="header-right">
-          <Link className="home-link" to={admin ? '/admin' : '/browse'} title="Home">
+          <Link className="home-link" to={homeTarget} title="Home">
             <Home size={16} />
             <span>Home</span>
           </Link>
           {user ? (
             <>
-              <NotificationBell notifData={notifData} admin={admin} />
+              <NotificationBell
+                notifData={notifData}
+                admin={isAdmin}
+                onSelectHistory={(n) => setSelectedHistoryNotif(n)}
+              />
               <div className="user-tag">
                 <User size={14} />
                 {user.username || user.name || user.email}
@@ -388,12 +494,12 @@ function Layout({ admin = false, children }) {
         <aside>
 
           <div className="aside-title">
-            {admin
+            {isAdmin
               ? 'ADMIN DASHBOARD'
               : 'USER DASHBOARD'}
           </div>
 
-          {admin ? (
+          {isAdmin ? (
             <>
               <Link
                 className={
@@ -4295,6 +4401,7 @@ function RentalRequests() {
 
 function NotificationsCenter({ admin = false }) {
   const [filter, setFilter] = useState('all');
+  const [selectedHistory, setSelectedHistory] = useState(null);
   const notifData = useRealtimeNotifications();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, refresh } = notifData;
 
@@ -4310,6 +4417,14 @@ function NotificationsCenter({ admin = false }) {
 
   return (
     <Layout admin={admin}>
+      {selectedHistory && (
+        <NotificationHistoryModal
+          notif={selectedHistory}
+          onClose={() => setSelectedHistory(null)}
+          admin={admin}
+        />
+      )}
+
       <div className="page-title-box notif-page-header">
         <div>
           <h1>Live Activity & Notifications</h1>
@@ -4370,7 +4485,15 @@ function NotificationsCenter({ admin = false }) {
         {filtered.map((n) => {
           const { cls, icon } = getNotifIconInfo(n.type);
           return (
-            <div key={n._id} className={`notif-card-item ${!n.isRead ? 'unread' : ''}`}>
+            <div
+              key={n._id}
+              className={`notif-card-item ${!n.isRead ? 'unread' : ''}`}
+              onClick={() => {
+                if (!n.isRead) markAsRead(n._id);
+                setSelectedHistory(n);
+              }}
+              style={{ cursor: 'pointer' }}
+            >
               <div className={`notif-icon ${cls}`} style={{ width: '40px', height: '40px', fontSize: '18px' }}>
                 {icon}
               </div>
@@ -4387,16 +4510,26 @@ function NotificationsCenter({ admin = false }) {
                   <span>{formatNotifTime(n.createdAt)}</span>
                 </div>
                 <p className="notif-card-text">{n.message}</p>
-                <div className="notif-card-footer">
+                <div className="notif-card-footer" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="btn btn-green btn-sm"
+                    onClick={() => {
+                      if (!n.isRead) markAsRead(n._id);
+                      setSelectedHistory(n);
+                    }}
+                  >
+                    <Clock3 size={14} /> View Complete Journey History
+                  </button>
                   <Link
                     to={admin ? '/admin/requests' : '/rentals'}
                     className="btn btn-dark btn-sm"
                     style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '12px' }}
                   >
-                    {admin ? 'Open in Requests & Approvals' : 'View in My Rentals'} &rarr;
+                    {admin ? 'Requests & Approvals' : 'My Rentals'} &rarr;
                   </Link>
                   {!n.isRead && (
-                    <button className="btn btn-green btn-sm" onClick={(e) => markAsRead(n._id, e)}>
+                    <button className="btn btn-dark btn-sm" onClick={(e) => markAsRead(n._id, e)}>
                       <Check size={14} /> Mark Read
                     </button>
                   )}

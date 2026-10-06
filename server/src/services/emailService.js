@@ -271,28 +271,63 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
 
   // Create In-App Notification for User
   let notifType = 'info';
-  if (status === 'approved') notifType = 'rental_approved';
-  else if (status === 'rejected') notifType = 'rental_rejected';
-  else if (status === 'returned') notifType = 'rental_returned';
+  let stageName = '2. APPROVED & ACTIVE';
+  if (status === 'approved') {
+    notifType = 'rental_approved';
+    stageName = '2. APPROVED & ACTIVE';
+  } else if (status === 'rejected') {
+    notifType = 'rental_rejected';
+    stageName = 'DECLINED';
+  } else if (status === 'returned') {
+    notifType = 'rental_returned';
+    stageName = '3. RETURNED & BILLED';
+  }
+
+  const historyEntry = {
+    stage: stageName,
+    action: `Rental status changed to ${status.toUpperCase()}`,
+    note: extra.note || (status === 'approved' ? 'Rental confirmed and active.' : status === 'returned' ? 'Item return inspected and verified.' : 'Request declined.'),
+    actor: 'Admin',
+    channel: extra.channel || 'Admin Portal / Gmail Action',
+    timestamp: new Date()
+  };
+
+  const metaData = {
+    productName: product?.title || product?.name || 'Product',
+    productCategory: product?.category || 'General',
+    customerName: user?.username || 'Customer',
+    customerEmail: user?.email,
+    customerMobile: rental.mobile,
+    amount: rental.totalAmount,
+    days: rental.days,
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    status: status,
+    channel: extra.channel || 'Admin Portal'
+  };
 
   await Notification.create({
     user: user._id || user,
     forAdmin: false,
     title: `Rental Request #${rental.uniqueId} ${status.toUpperCase()}`,
-    message: `Your rental for "${product?.title || 'Product'}" has been ${status}.`,
+    message: `Your rental for "${product?.title || product?.name || 'Product'}" has been ${status}.`,
     type: notifType,
     rental: rental._id,
     uniqueId: rental.uniqueId,
+    historyLog: [historyEntry],
+    meta: metaData
   });
 
   // Create In-App Notification for Admin
   await Notification.create({
     forAdmin: true,
     title: `Rental #${rental.uniqueId} Marked as ${status.toUpperCase()}`,
-    message: `Rental for "${product?.title || 'Product'}" (${user?.username || user?.email || 'User'}) is now ${status}.`,
+    message: `Rental for "${product?.title || product?.name || 'Product'}" (${user?.username || user?.email || 'User'}) is now ${status}.`,
     type: notifType,
     rental: rental._id,
     uniqueId: rental.uniqueId,
+    historyLog: [historyEntry],
+    meta: metaData
   });
 };
 
@@ -300,16 +335,39 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
  * Send Damage Assessment Notification
  */
 export const sendDamageNotification = async (rental, user, product, damageReport) => {
+  const damageHistory = {
+    stage: 'INSPECTION & DAMAGE',
+    action: `Damage assessment logged: ₹${damageReport.damageCost} penalty`,
+    note: damageReport.damageDetails || 'Item damaged during rental',
+    actor: 'Admin',
+    channel: 'Admin Portal',
+    timestamp: new Date()
+  };
+
+  const metaData = {
+    productName: product?.title || product?.name || 'Product',
+    productCategory: product?.category || 'General',
+    customerName: user?.username || 'Customer',
+    customerEmail: user?.email,
+    customerMobile: rental.mobile,
+    amount: rental.totalAmount,
+    days: rental.days,
+    status: rental.status,
+    channel: 'Admin Portal'
+  };
+
   // In-app notif for user
   if (user) {
     await Notification.create({
       user: user._id || user,
       forAdmin: false,
       title: `⚠️ Damage Report Logged for #${rental.uniqueId}`,
-      message: `Damage assessment for "${product?.title}": ₹${damageReport.damageCost} penalty recorded. Details: ${damageReport.damageDetails}`,
+      message: `Damage assessment for "${product?.title || product?.name || 'Product'}": ₹${damageReport.damageCost} penalty recorded. Details: ${damageReport.damageDetails}`,
       type: 'damage_reported',
       rental: rental._id,
       uniqueId: rental.uniqueId,
+      historyLog: [damageHistory],
+      meta: metaData
     });
   }
 
@@ -317,10 +375,12 @@ export const sendDamageNotification = async (rental, user, product, damageReport
   await Notification.create({
     forAdmin: true,
     title: `Damage Report Saved for #${rental.uniqueId}`,
-    message: `Damage of ₹${damageReport.damageCost} logged on "${product?.title}" (User: ${user?.email || 'N/A'}).`,
+    message: `Damage of ₹${damageReport.damageCost} logged on "${product?.title || product?.name || 'Product'}" (User: ${user?.email || 'N/A'}).`,
     type: 'damage_reported',
     rental: rental._id,
     uniqueId: rental.uniqueId,
+    historyLog: [damageHistory],
+    meta: metaData
   });
 };
 
