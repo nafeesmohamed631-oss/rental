@@ -1,40 +1,55 @@
 import emailjs from '@emailjs/browser';
 
-const emailConfig = {
-  publicKey: import.meta.env.VITE_EMAILJS_PUBLIC_KEY,
-  serviceId: import.meta.env.VITE_EMAILJS_SERVICE_ID,
-  templateId: import.meta.env.VITE_EMAILJS_TEMPLATE_ID,
-  adminEmail: import.meta.env.VITE_ADMIN_EMAIL
+// ============================================================
+// EMAILJS REAL-TIME CREDENTIALS & SERVICE CONFIG
+// ============================================================
+export const EMAILJS_CONFIG = {
+  serviceId: 'service_zel8uao',
+  templateId: 'template_o6v7una',
+  publicKey: 'yatzmaslIW7Et77qo',
+  adminEmail: 'sudalai1234@gmail.com'
 };
 
-export const isEmailConfigured = () => Object.values(emailConfig).every(Boolean);
+export const getAdminEmail = () => EMAILJS_CONFIG.adminEmail;
 
-export async function sendRentalEmail({ recipientEmail, recipientName, subject, status, rental }) {
-  if (!isEmailConfigured() || !recipientEmail) {
-    console.warn('EmailJS is not configured or the recipient email is missing.');
-    return false;
-  }
-
+/**
+ * Dispatch custom real-time email notification via EmailJS
+ */
+export async function sendRealtimeEmail({ from_name, from_email, message, ...extraParams }) {
   try {
-    await emailjs.send(emailConfig.serviceId, emailConfig.templateId, {
-      to_email: recipientEmail,
-      to_name: recipientName || 'SmartRent customer',
-      subject,
-      status,
-      rental_id: rental.uniqueId || rental._id,
-      product_name: rental.product?.name || 'Rental item',
-      rental_days: rental.days,
-      total_amount: `INR ${rental.totalAmount}`,
-      start_date: new Date(rental.startDate).toLocaleDateString(),
-      end_date: new Date(rental.endDate).toLocaleDateString(),
-      mobile: rental.mobile || 'N/A',
-      message: `Your SmartRent rental request for ${rental.product?.name || 'the item'} is ${status}.`
-    }, emailConfig.publicKey);
-    return true;
+    const res = await emailjs.send(
+      EMAILJS_CONFIG.serviceId,
+      EMAILJS_CONFIG.templateId,
+      {
+        from_name: from_name || 'SmartRent Customer',
+        from_email: from_email || 'customer@smartrent.com',
+        message: message || '',
+        ...extraParams
+      },
+      {
+        publicKey: EMAILJS_CONFIG.publicKey
+      }
+    );
+    console.log('✅ [EmailJS Success] Dispatched successfully:', res.status, res.text);
+    return { success: true, res };
   } catch (error) {
-    console.error('EmailJS notification failed:', error);
-    return false;
+    console.error('❌ [EmailJS Error] Failed to send email:', error);
+    return { success: false, error };
   }
 }
 
-export const getAdminEmail = () => emailConfig.adminEmail;
+/**
+ * Send rental-specific real-time email
+ */
+export async function sendRentalEmail({ recipientEmail, recipientName, subject, status, rental }) {
+  const msg = `Rental Update #${rental?.uniqueId || rental?._id || 'REQ'}: Status is ${status.toUpperCase()}. Product: ${rental?.product?.name || rental?.product?.title || 'Rental Item'}. Total: INR ${rental?.totalAmount}.`;
+  return sendRealtimeEmail({
+    from_name: recipientName || 'SmartRent Notification',
+    from_email: recipientEmail || 'customer@smartrent.com',
+    message: msg,
+    subject,
+    status,
+    rental_id: rental?.uniqueId || rental?._id,
+    total_amount: rental?.totalAmount
+  });
+}

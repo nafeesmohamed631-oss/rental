@@ -1,26 +1,54 @@
-import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
 import Notification from '../models/Notification.js';
+
+// ============================================================
+// EMAILJS CREDENTIALS & SERVICE CONFIG
+// ============================================================
+const EMAILJS_SERVICE_ID = 'service_zel8uao';
+const EMAILJS_TEMPLATE_ID = 'template_o6v7una';
+const EMAILJS_PUBLIC_KEY = 'yatzmaslIW7Et77qo';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sudalai1234@gmail.com';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const JWT_SECRET = process.env.JWT_SECRET || 'smartrent_secret_key_123';
 
-// Initialize nodemailer transporter
-const getTransporter = () => {
-  if (process.env.SMTP_USER && process.env.SMTP_PASS) {
-    return nodemailer.createTransport({
-      host: process.env.SMTP_HOST || 'smtp.gmail.com',
-      port: Number(process.env.SMTP_PORT) || 587,
-      secure: Number(process.env.SMTP_PORT) === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
+/**
+ * Dispatch real-time email using EmailJS REST API
+ */
+export const dispatchEmailJS = async ({ from_name, from_email, message }) => {
+  try {
+    const response = await fetch('https://api.emailjs.com/api/v1.0/email/send', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Origin': CLIENT_URL,
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
       },
+      body: JSON.stringify({
+        service_id: EMAILJS_SERVICE_ID,
+        template_id: EMAILJS_TEMPLATE_ID,
+        user_id: EMAILJS_PUBLIC_KEY,
+        template_params: {
+          from_name: from_name || 'SmartRent System',
+          from_email: from_email || 'no-reply@smartrent.com',
+          message: message || ''
+        }
+      })
     });
+
+    const resText = await response.text();
+    if (response.ok) {
+      console.log(`✅ [EmailJS Dispatched Successfully] Status: ${response.status} - Sent for ${from_name}`);
+      return { success: true, resText };
+    } else {
+      console.warn(`⚠️ [EmailJS Warning] Status: ${response.status} - ${resText}`);
+      return { success: false, resText };
+    }
+  } catch (error) {
+    console.error(`❌ [EmailJS Dispatch Error]`, error.message);
+    return { success: false, error: error.message };
   }
-  return null;
 };
 
 // Generate action token for email links
@@ -38,7 +66,7 @@ export const verifyActionToken = (token) => {
 };
 
 /**
- * Send email to Admin with Direct Action Buttons (Approve / Reject)
+ * Send real-time email to Admin with Direct Action Buttons (Approve / Reject) via EmailJS
  */
 export const sendAdminRentalRequestEmail = async (rental, user, product) => {
   const approveToken = generateActionToken(rental._id.toString(), 'approved');
@@ -48,122 +76,82 @@ export const sendAdminRentalRequestEmail = async (rental, user, product) => {
   const rejectUrl = `${SERVER_URL}/api/rentals/email-action?action=rejected&id=${rental._id}&token=${rejectToken}`;
   const adminDashboardUrl = `${CLIENT_URL}/admin/requests`;
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #1e293b; }
-        .card { max-width: 600px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
-        .header { background: #0f172a; color: #ffffff; padding: 24px; text-align: center; }
-        .header h1 { margin: 0 0 8px 0; font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
-        .badge { display: inline-block; background: #3b82f6; color: #fff; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 9999px; text-transform: uppercase; }
-        .body { padding: 28px; }
-        .info-grid { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 18px; margin: 20px 0; }
-        .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
-        .info-row:last-child { border-bottom: none; }
-        .label { color: #64748b; font-weight: 500; }
-        .val { color: #0f172a; font-weight: 600; }
-        .actions { display: flex; gap: 14px; margin: 30px 0 10px 0; justify-content: center; }
-        .btn { display: inline-block; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 700; font-size: 15px; text-align: center; }
-        .btn-approve { background-color: #10b981; color: #ffffff !important; }
-        .btn-reject { background-color: #ef4444; color: #ffffff !important; }
-        .btn:hover { opacity: 0.92; }
-        .footer { text-align: center; padding: 20px; font-size: 12px; color: #94a3b8; border-top: 1px solid #f1f5f9; background: #fafafa; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div class="header">
-          <span class="badge">New Rental Request</span>
-          <h1 style="margin-top: 10px;">Action Required: Rental #${rental.uniqueId || rental._id}</h1>
-          <p style="margin: 0; font-size: 14px; color: #94a3b8;">User has completed payment and submitted a rental request.</p>
-        </div>
-        <div class="body">
-          <p style="font-size: 15px; line-height: 1.5; margin-top: 0;">
-            Hello <strong>Admin</strong>,<br/>
-            A new rental order has been placed on <strong>SmartRent</strong>. Review the details below and select an action to update the order in real time.
-          </p>
+  const customerName = user?.username || 'Customer';
+  const customerEmail = user?.email || 'customer@smartrent.com';
 
-          <div class="info-grid">
-            <div class="info-row"><span class="label">Rental Reference ID:</span><span class="val">${rental.uniqueId || rental._id}</span></div>
-            <div class="info-row"><span class="label">Product Name:</span><span class="val">${product?.title || 'Product'}</span></div>
-            <div class="info-row"><span class="label">Category:</span><span class="val">${product?.category || 'General'}</span></div>
-            <div class="info-row"><span class="label">Customer:</span><span class="val">${user?.username || 'Customer'} (${user?.email || ''})</span></div>
-            <div class="info-row"><span class="label">Mobile Number:</span><span class="val">${rental.mobile || 'N/A'}</span></div>
-            <div class="info-row"><span class="label">UPI / Payment ID:</span><span class="val">${rental.upiId || 'Paid'}</span></div>
-            <div class="info-row"><span class="label">Duration:</span><span class="val">${rental.days} Day(s)</span></div>
-            <div class="info-row"><span class="label">Start Date:</span><span class="val">${new Date(rental.startDate).toLocaleDateString()}</span></div>
-            <div class="info-row"><span class="label">End Date:</span><span class="val">${new Date(rental.endDate).toLocaleDateString()}</span></div>
-            <div class="info-row"><span class="label">Total Paid:</span><span class="val" style="color: #059669; font-size: 16px;">₹${rental.totalAmount}</span></div>
-          </div>
+  const messageText = [
+    `🚨 NEW RENTAL REQUEST - ACTION REQUIRED`,
+    `==========================================`,
+    `Rental Ref ID: #${rental.uniqueId || rental._id}`,
+    `Product: ${product?.title || 'Product'} (${product?.category || 'General'})`,
+    `Customer: ${customerName} (${customerEmail})`,
+    `Mobile: ${rental.mobile || 'N/A'}`,
+    `Payment / UPI Ref: ${rental.upiId || 'Paid'}`,
+    `Duration: ${rental.days} Days`,
+    `Start Date: ${new Date(rental.startDate).toLocaleDateString()}`,
+    `End Date: ${new Date(rental.endDate).toLocaleDateString()}`,
+    `Total Paid: ₹${rental.totalAmount}`,
+    ``,
+    `DIRECT ACTION LINKS:`,
+    `👉 ACCEPT / APPROVE: ${approveUrl}`,
+    `👉 REJECT: ${rejectUrl}`,
+    ``,
+    `Admin Dashboard: ${adminDashboardUrl}`,
+    `==========================================`,
+    `SmartRent Real-Time Notification System (Sent to: ${ADMIN_EMAIL})`
+  ].join('\n');
 
-          <p style="text-align: center; font-size: 14px; font-weight: 600; color: #475569; margin-bottom: 12px;">
-            Click below to Accept or Reject directly from Gmail:
-          </p>
-
-          <table width="100%" cellspacing="0" cellpadding="0" style="margin: 20px 0;">
-            <tr>
-              <td align="center" style="padding-right: 8px;">
-                <a href="${approveUrl}" class="btn btn-approve" style="display: block; width: 85%; padding: 14px; background: #10b981; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
-                  ✓ ACCEPT / APPROVE
-                </a>
-              </td>
-              <td align="center" style="padding-left: 8px;">
-                <a href="${rejectUrl}" class="btn btn-reject" style="display: block; width: 85%; padding: 14px; background: #ef4444; color: #ffffff; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 15px;">
-                  ✕ REJECT
-                </a>
-              </td>
-            </tr>
-          </table>
-
-          <p style="font-size: 13px; color: #64748b; text-align: center; margin-top: 25px;">
-            Alternatively, manage all requests in the <a href="${adminDashboardUrl}" style="color: #3b82f6; font-weight: 600;">Admin Dashboard</a>.
-          </p>
-        </div>
-        <div class="footer">
-          SmartRent Multi-Platform Rental System &copy; ${new Date().getFullYear()} &bull; Sent automatically to ${ADMIN_EMAIL}
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  // Always log action links to console so development is smooth
+  // Log action links to console
   console.log(`\n======================================================`);
-  console.log(`📧 [EMAIL TO ADMIN: ${ADMIN_EMAIL}]`);
-  console.log(`📦 New Rental: ${rental.uniqueId} for "${product?.title}" by ${user?.email}`);
+  console.log(`📧 [EMAILJS TO ADMIN: ${ADMIN_EMAIL}]`);
+  console.log(`📦 New Rental: ${rental.uniqueId} for "${product?.title}" by ${customerEmail}`);
   console.log(`✅ Direct Accept URL: ${approveUrl}`);
   console.log(`❌ Direct Reject URL: ${rejectUrl}`);
   console.log(`======================================================\n`);
 
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      await transporter.sendMail({
-        from: `"SmartRent Notifications" <${process.env.SMTP_USER || 'no-reply@smartrent.com'}>`,
-        to: ADMIN_EMAIL,
-        subject: `[ACTION REQUIRED] New Rental Request #${rental.uniqueId} - ${product?.title}`,
-        html: htmlContent,
-      });
-      console.log(`✅ Email successfully dispatched to ${ADMIN_EMAIL}`);
-    } catch (err) {
-      console.error(`⚠️ Failed to send email via SMTP:`, err.message);
-    }
-  }
+  // Dispatch real-time email via EmailJS
+  await dispatchEmailJS({
+    from_name: `SmartRent - ${customerName}`,
+    from_email: customerEmail,
+    message: messageText
+  });
 
-  // Create In-App Notification for Admin
+  const historyEntry = {
+    stage: '1. REQUESTED & PAID',
+    action: 'Rental request submitted with full payment verification',
+    note: `Online payment of ₹${rental.totalAmount} verified. Direct action dispatch sent to admin (${ADMIN_EMAIL}).`,
+    actor: 'Customer',
+    channel: 'Online Portal',
+    timestamp: new Date()
+  };
+
+  const metaData = {
+    productName: product?.title || 'Product',
+    productCategory: product?.category || 'General',
+    customerName: customerName,
+    customerEmail: customerEmail,
+    customerMobile: rental.mobile,
+    amount: rental.totalAmount,
+    days: rental.days,
+    startDate: rental.startDate,
+    endDate: rental.endDate,
+    status: 'pending',
+    channel: 'Online Portal'
+  };
+
+  // Create In-App Notification for Admin in MongoDB
   await Notification.create({
     forAdmin: true,
     title: `New Rental Request #${rental.uniqueId}`,
-    message: `${user?.username || 'User'} (${user?.email}) requested "${product?.title}" for ${rental.days} days (₹${rental.totalAmount}).`,
+    message: `${customerName} (${customerEmail}) requested "${product?.title}" for ${rental.days} days (₹${rental.totalAmount}).`,
     type: 'rental_requested',
     rental: rental._id,
     uniqueId: rental.uniqueId,
+    historyLog: [historyEntry],
+    meta: metaData
   });
 
-  // Create In-App Notification for User
+  // Create In-App Notification for User in MongoDB
   if (user) {
     await Notification.create({
       user: user._id || user,
@@ -173,101 +161,48 @@ export const sendAdminRentalRequestEmail = async (rental, user, product) => {
       type: 'rental_requested',
       rental: rental._id,
       uniqueId: rental.uniqueId,
+      historyLog: [historyEntry],
+      meta: metaData
     });
   }
 };
 
 /**
- * Send Rental Status Update Email & Notification to User
+ * Send Rental Status Update Email & Notification via EmailJS
  */
 export const sendUserRentalStatusEmail = async (rental, user, product, status, extra = {}) => {
   if (!user || !user.email) return;
 
-  let subject = '';
-  let statusHeadline = '';
-  let statusColor = '#3b82f6';
-  let messageBody = '';
+  const statusUpper = status.toUpperCase();
+  const userName = user.username || 'Customer';
 
-  if (status === 'approved') {
-    subject = `🎉 Rental Request Approved: ${product?.title} (#${rental.uniqueId})`;
-    statusHeadline = 'Rental Request Approved!';
-    statusColor = '#10b981';
-    messageBody = `Great news! The administrator has approved your rental request for <strong>${product?.title}</strong>. Your rental is now active.`;
-  } else if (status === 'rejected') {
-    subject = `❌ Rental Request Update: ${product?.title} (#${rental.uniqueId})`;
-    statusHeadline = 'Rental Request Declined';
-    statusColor = '#ef4444';
-    messageBody = `Your rental request for <strong>${product?.title}</strong> was not approved at this time. If payment was processed, refund will be initiated.`;
-  } else if (status === 'returned') {
-    subject = `📦 Rental Returned: ${product?.title} (#${rental.uniqueId})`;
-    statusHeadline = 'Product Return Processed';
-    statusColor = '#6366f1';
-    messageBody = `Your rental of <strong>${product?.title}</strong> has been marked as returned and verified. Thank you for renting with SmartRent!`;
-  }
+  const userMessage = [
+    `📢 RENTAL STATUS UPDATE: #${rental.uniqueId || rental._id} IS NOW ${statusUpper}`,
+    `==========================================`,
+    `Hello ${userName},`,
+    `Your rental request for "${product?.title || 'Product'}" has been updated to: ${statusUpper}.`,
+    ``,
+    `Rental Details:`,
+    `- Rental Ref: #${rental.uniqueId || rental._id}`,
+    `- Product: ${product?.title || 'Product'}`,
+    `- Status: ${statusUpper}`,
+    `- Rental Period: ${new Date(rental.startDate).toLocaleDateString()} to ${new Date(rental.endDate).toLocaleDateString()}`,
+    `- Total Amount: ₹${rental.totalAmount}`,
+    `- Details / Notes: ${extra.note || (status === 'approved' ? 'Rental confirmed and active.' : status === 'returned' ? 'Item returned and verified.' : 'Request declined.')}`,
+    ``,
+    `View your active rentals anytime: ${CLIENT_URL}/rentals`,
+    `==========================================`,
+    `SmartRent Real-Time Rental Services`
+  ].join('\n');
 
-  const htmlContent = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-      <meta charset="utf-8">
-      <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #1e293b; }
-        .card { max-width: 550px; margin: 0 auto; background: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 14px rgba(0,0,0,0.08); border: 1px solid #e2e8f0; }
-        .header { background: ${statusColor}; color: #ffffff; padding: 24px; text-align: center; }
-        .header h1 { margin: 0; font-size: 20px; font-weight: 700; }
-        .body { padding: 28px; }
-        .info-grid { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0; }
-        .info-row { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e2e8f0; font-size: 14px; }
-        .info-row:last-child { border-bottom: none; }
-        .footer { text-align: center; padding: 18px; font-size: 12px; color: #94a3b8; background: #fafafa; border-top: 1px solid #f1f5f9; }
-        .btn { display: inline-block; padding: 12px 24px; background: #0f172a; color: #fff !important; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; }
-      </style>
-    </head>
-    <body>
-      <div class="card">
-        <div class="header">
-          <h1>${statusHeadline}</h1>
-        </div>
-        <div class="body">
-          <p style="font-size: 15px; margin-top: 0;">Hi <strong>${user.username || 'Valued Customer'}</strong>,</p>
-          <p style="font-size: 14px; line-height: 1.6; color: #334155;">${messageBody}</p>
+  console.log(`\n📧 [EMAILJS STATUS UPDATE: ${user.email}] Status: ${status} for Rental ${rental.uniqueId}`);
 
-          <div class="info-grid">
-            <div class="info-row"><span>Rental ID:</span><strong>${rental.uniqueId || rental._id}</strong></div>
-            <div class="info-row"><span>Product:</span><strong>${product?.title}</strong></div>
-            <div class="info-row"><span>Status:</span><strong style="color: ${statusColor}; text-transform: uppercase;">${status}</strong></div>
-            <div class="info-row"><span>Rental Period:</span><span>${new Date(rental.startDate).toLocaleDateString()} - ${new Date(rental.endDate).toLocaleDateString()}</span></div>
-            <div class="info-row"><span>Total Amount:</span><strong>₹${rental.totalAmount}</strong></div>
-          </div>
-
-          <div style="text-align: center; margin-top: 25px;">
-            <a href="${CLIENT_URL}/dashboard" class="btn">View My Rentals</a>
-          </div>
-        </div>
-        <div class="footer">
-          SmartRent &copy; ${new Date().getFullYear()} &bull; Sent to ${user.email}
-        </div>
-      </div>
-    </body>
-    </html>
-  `;
-
-  console.log(`\n📧 [EMAIL TO USER: ${user.email}] Status: ${status} for Rental ${rental.uniqueId}`);
-
-  const transporter = getTransporter();
-  if (transporter) {
-    try {
-      await transporter.sendMail({
-        from: `"SmartRent Notifications" <${process.env.SMTP_USER || 'no-reply@smartrent.com'}>`,
-        to: user.email,
-        subject,
-        html: htmlContent,
-      });
-      console.log(`✅ Email successfully dispatched to user ${user.email}`);
-    } catch (err) {
-      console.error(`⚠️ Failed to send user email via SMTP:`, err.message);
-    }
-  }
+  // Dispatch real-time email via EmailJS
+  await dispatchEmailJS({
+    from_name: `SmartRent Admin`,
+    from_email: ADMIN_EMAIL,
+    message: userMessage
+  });
 
   // Create In-App Notification for User
   let notifType = 'info';
@@ -285,7 +220,7 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
 
   const historyEntry = {
     stage: stageName,
-    action: `Rental status changed to ${status.toUpperCase()}`,
+    action: `Rental status changed to ${statusUpper}`,
     note: extra.note || (status === 'approved' ? 'Rental confirmed and active.' : status === 'returned' ? 'Item return inspected and verified.' : 'Request declined.'),
     actor: 'Admin',
     channel: extra.channel || 'Admin Portal / Gmail Action',
@@ -295,8 +230,8 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
   const metaData = {
     productName: product?.title || product?.name || 'Product',
     productCategory: product?.category || 'General',
-    customerName: user?.username || 'Customer',
-    customerEmail: user?.email,
+    customerName: userName,
+    customerEmail: user.email,
     customerMobile: rental.mobile,
     amount: rental.totalAmount,
     days: rental.days,
@@ -309,7 +244,7 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
   await Notification.create({
     user: user._id || user,
     forAdmin: false,
-    title: `Rental Request #${rental.uniqueId} ${status.toUpperCase()}`,
+    title: `Rental Request #${rental.uniqueId} ${statusUpper}`,
     message: `Your rental for "${product?.title || product?.name || 'Product'}" has been ${status}.`,
     type: notifType,
     rental: rental._id,
@@ -321,8 +256,8 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
   // Create In-App Notification for Admin
   await Notification.create({
     forAdmin: true,
-    title: `Rental #${rental.uniqueId} Marked as ${status.toUpperCase()}`,
-    message: `Rental for "${product?.title || product?.name || 'Product'}" (${user?.username || user?.email || 'User'}) is now ${status}.`,
+    title: `Rental #${rental.uniqueId} Marked as ${statusUpper}`,
+    message: `Rental for "${product?.title || product?.name || 'Product'}" (${userName} - ${user.email}) is now ${status}.`,
     type: notifType,
     rental: rental._id,
     uniqueId: rental.uniqueId,
@@ -332,9 +267,32 @@ export const sendUserRentalStatusEmail = async (rental, user, product, status, e
 };
 
 /**
- * Send Damage Assessment Notification
+ * Send Damage Assessment Notification via EmailJS
  */
 export const sendDamageNotification = async (rental, user, product, damageReport) => {
+  const userName = user?.username || 'Customer';
+  const userEmail = user?.email || 'customer@smartrent.com';
+
+  const damageText = [
+    `⚠️ DAMAGE REPORT NOTIFICATION - RENTAL #${rental.uniqueId || rental._id}`,
+    `==========================================`,
+    `Customer: ${userName} (${userEmail})`,
+    `Product: ${product?.title || product?.name || 'Product'}`,
+    `Damage Penalty Assessed: ₹${damageReport.damageCost}`,
+    `Inspection Details: ${damageReport.damageDetails || 'Item damaged during rental period'}`,
+    ``,
+    `Admin Portal: ${CLIENT_URL}/admin/requests`,
+    `==========================================`,
+    `SmartRent Inspection Audit`
+  ].join('\n');
+
+  // Dispatch real-time email via EmailJS
+  await dispatchEmailJS({
+    from_name: 'SmartRent Damage Inspection',
+    from_email: ADMIN_EMAIL,
+    message: damageText
+  });
+
   const damageHistory = {
     stage: 'INSPECTION & DAMAGE',
     action: `Damage assessment logged: ₹${damageReport.damageCost} penalty`,
@@ -347,8 +305,8 @@ export const sendDamageNotification = async (rental, user, product, damageReport
   const metaData = {
     productName: product?.title || product?.name || 'Product',
     productCategory: product?.category || 'General',
-    customerName: user?.username || 'Customer',
-    customerEmail: user?.email,
+    customerName: userName,
+    customerEmail: userEmail,
     customerMobile: rental.mobile,
     amount: rental.totalAmount,
     days: rental.days,
@@ -375,7 +333,7 @@ export const sendDamageNotification = async (rental, user, product, damageReport
   await Notification.create({
     forAdmin: true,
     title: `Damage Report Saved for #${rental.uniqueId}`,
-    message: `Damage of ₹${damageReport.damageCost} logged on "${product?.title || product?.name || 'Product'}" (User: ${user?.email || 'N/A'}).`,
+    message: `Damage of ₹${damageReport.damageCost} logged on "${product?.title || product?.name || 'Product'}" (User: ${userEmail}).`,
     type: 'damage_reported',
     rental: rental._id,
     uniqueId: rental.uniqueId,
@@ -383,4 +341,3 @@ export const sendDamageNotification = async (rental, user, product, damageReport
     meta: metaData
   });
 };
-

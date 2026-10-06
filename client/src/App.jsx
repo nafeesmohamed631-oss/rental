@@ -43,7 +43,8 @@ import {
 import { jsPDF } from 'jspdf';
 
 import { api } from './api';
-import { getAdminEmail, sendRentalEmail } from './email';
+import { EMAILJS_CONFIG, sendRentalEmail, sendRealtimeEmail } from './email';
+import { ContactUs } from './ContactUs';
 
 // GOOGLE LOGIN
 import {
@@ -4402,6 +4403,7 @@ function RentalRequests() {
 function NotificationsCenter({ admin = false }) {
   const [filter, setFilter] = useState('all');
   const [selectedHistory, setSelectedHistory] = useState(null);
+  const [showContactModal, setShowContactModal] = useState(false);
   const notifData = useRealtimeNotifications();
   const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, refresh } = notifData;
 
@@ -4425,12 +4427,23 @@ function NotificationsCenter({ admin = false }) {
         />
       )}
 
+      {showContactModal && (
+        <div className="history-modal-overlay" onClick={() => setShowContactModal(false)}>
+          <div className="history-modal-card" onClick={(e) => e.stopPropagation()} style={{ padding: 0 }}>
+            <ContactUs onClose={() => setShowContactModal(false)} />
+          </div>
+        </div>
+      )}
+
       <div className="page-title-box notif-page-header">
         <div>
           <h1>Live Activity & Notifications</h1>
           <p>Real-time lifecycle monitoring of requests, approvals, returns, and damage assessments.</p>
         </div>
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+          <button className="btn btn-green btn-sm" onClick={() => setShowContactModal(true)}>
+            ✉️ Send Direct Email (EmailJS)
+          </button>
           {unreadCount > 0 && (
             <button className="btn btn-green btn-sm" onClick={markAllAsRead}>
               <Check size={16} /> Mark All as Read ({unreadCount})
