@@ -27,15 +27,17 @@ import {
   Sparkles,
   User,
   Hash,
-  Calendar
-  ,ArrowRight
-  ,ArrowLeft
-  ,Home
-  ,BookOpen
-  ,Camera
-  ,Laptop
-  ,Smartphone
-  ,Headphones
+  Calendar,
+  ArrowRight,
+  ArrowLeft,
+  Home,
+  BookOpen,
+  Camera,
+  Laptop,
+  Smartphone,
+  Headphones,
+  Bell,
+  X
 } from 'lucide-react';
 
 import { jsPDF } from 'jspdf';
@@ -110,6 +112,201 @@ function Guard({ role, children }) {
 
 
 // ============================================================
+// ============================================================
+// REAL-TIME NOTIFICATION HOOK & TOAST SYSTEM
+// ============================================================
+
+function useRealtimeNotifications() {
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [toasts, setToasts] = useState([]);
+  const [prevNotifIds, setPrevNotifIds] = useState(new Set());
+
+  const fetchNotifications = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await api.get('/notifications/mine');
+      const list = res.data.notifications || [];
+      const unread = res.data.unreadCount || 0;
+
+      // Detect brand new unread notifications to trigger floating toast
+      if (prevNotifIds.size > 0) {
+        const newUnread = list.filter((n) => !n.isRead && !prevNotifIds.has(n._id));
+        if (newUnread.length > 0) {
+          newUnread.forEach((n) => {
+            setToasts((prev) => [n, ...prev.slice(0, 2)]);
+            setTimeout(() => {
+              setToasts((prev) => prev.filter((t) => t._id !== n._id));
+            }, 6000);
+          });
+        }
+      }
+
+      setPrevNotifIds(new Set(list.map((n) => n._id)));
+      setNotifications(list);
+      setUnreadCount(unread);
+    } catch (err) {
+      // Ignore unauth errors
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 4000);
+    return () => clearInterval(interval);
+  }, [prevNotifIds]);
+
+  const removeToast = (id) => {
+    setToasts((prev) => prev.filter((t) => t._id !== id));
+  };
+
+  const markAsRead = async (id, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await api.patch(`/notifications/${id}/read`);
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      await api.patch('/notifications/read-all');
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const deleteNotification = async (id, e) => {
+    if (e) e.stopPropagation();
+    try {
+      await api.delete(`/notifications/${id}`);
+      fetchNotifications();
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  return {
+    notifications,
+    unreadCount,
+    toasts,
+    removeToast,
+    markAsRead,
+    markAllAsRead,
+    deleteNotification,
+    refresh: fetchNotifications
+  };
+}
+
+function getNotifIconInfo(type) {
+  switch (type) {
+    case 'rental_requested': return { cls: 'notif-icon-requested', toastCls: '', icon: '📥' };
+    case 'rental_approved': return { cls: 'notif-icon-approved', toastCls: 'toast-approved', icon: '✅' };
+    case 'rental_rejected': return { cls: 'notif-icon-rejected', toastCls: 'toast-rejected', icon: '❌' };
+    case 'rental_returned': return { cls: 'notif-icon-returned', toastCls: 'toast-returned', icon: '📦' };
+    case 'damage_reported': return { cls: 'notif-icon-damage', toastCls: 'toast-damage', icon: '⚠️' };
+    default: return { cls: 'notif-icon-info', toastCls: '', icon: '🔔' };
+  }
+}
+
+function formatNotifTime(dateStr) {
+  if (!dateStr) return '';
+  const diff = Math.floor((new Date() - new Date(dateStr)) / 1000);
+  if (diff < 60) return 'Just now';
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return new Date(dateStr).toLocaleDateString();
+}
+
+function NotificationBell({ notifData, admin = false }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const navigate = useNavigate();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = notifData;
+
+  return (
+    <div className="notif-container">
+      <button
+        type="button"
+        className="notif-bell-btn"
+        onClick={() => setIsOpen(!isOpen)}
+        title="Notifications & Messages"
+      >
+        <Bell size={18} />
+        {unreadCount > 0 && (
+          <span className="notif-badge">{unreadCount > 9 ? '9+' : unreadCount}</span>
+        )}
+      </button>
+
+      {isOpen && (
+        <div className="notif-dropdown">
+          <div className="notif-header">
+            <h4>
+              <Bell size={16} /> Notifications & Messages
+            </h4>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {unreadCount > 0 && (
+                <button type="button" className="notif-read-all" onClick={markAllAsRead}>
+                  Mark all read
+                </button>
+              )}
+              <Link
+                to={admin ? '/admin/notifications' : '/notifications'}
+                className="notif-read-all"
+                style={{ color: '#0f172a', fontWeight: 'bold' }}
+                onClick={() => setIsOpen(false)}
+              >
+                View All &rarr;
+              </Link>
+            </div>
+          </div>
+
+          <div className="notif-list">
+            {notifications.length > 0 ? (
+              notifications.slice(0, 8).map((n) => {
+                const { cls, icon } = getNotifIconInfo(n.type);
+                return (
+                  <div key={n._id} className={`notif-item ${!n.isRead ? 'unread' : ''}`}>
+                    <div className={`notif-icon ${cls}`}>
+                      {icon}
+                    </div>
+                    <div className="notif-body">
+                      <div className="notif-title-row">
+                        <span className="notif-title">{n.title}</span>
+                        <span className="notif-time">{formatNotifTime(n.createdAt)}</span>
+                      </div>
+                      <p className="notif-msg">{n.message}</p>
+                      <div className="notif-actions">
+                        {!n.isRead && (
+                          <button type="button" className="notif-btn-sm" onClick={(e) => markAsRead(n._id, e)}>
+                            Mark read
+                          </button>
+                        )}
+                        <button type="button" className="notif-btn-sm" onClick={(e) => deleteNotification(n._id, e)}>
+                          Dismiss
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })
+            ) : (
+              <div className="notif-empty">
+                No notifications or messages yet.
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+
+// ============================================================
 // GLOBAL LAYOUT
 // ============================================================
 
@@ -117,16 +314,41 @@ function Layout({ admin = false, children }) {
   const navigate = useNavigate();
   const location = useLocation();
   const user = getUser();
+  const notifData = useRealtimeNotifications();
 
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
-
     navigate('/login');
   };
 
   return (
     <>
+      {/* FLOATING REAL-TIME TOAST NOTIFICATIONS */}
+      {notifData.toasts && notifData.toasts.length > 0 && (
+        <div className="toast-container">
+          {notifData.toasts.map((toast) => {
+            const { toastCls, icon } = getNotifIconInfo(toast.type);
+            return (
+              <div key={toast._id} className={`realtime-toast ${toastCls}`}>
+                <div className="toast-icon-box">{icon}</div>
+                <div className="toast-content">
+                  <div className="toast-title">{toast.title}</div>
+                  <p className="toast-message">{toast.message}</p>
+                </div>
+                <button
+                  type="button"
+                  className="toast-close-btn"
+                  onClick={() => notifData.removeToast(toast._id)}
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       <header>
         <Link
           className="logo"
@@ -142,6 +364,7 @@ function Layout({ admin = false, children }) {
           </Link>
           {user ? (
             <>
+              <NotificationBell notifData={notifData} admin={admin} />
               <div className="user-tag">
                 <User size={14} />
                 {user.username || user.name || user.email}
@@ -209,6 +432,22 @@ function Layout({ admin = false, children }) {
                 <Clock3 size={18} />
                 Requests & Approvals
               </Link>
+
+              <Link
+                className={
+                  location.pathname ===
+                  '/admin/notifications'
+                    ? 'active'
+                    : ''
+                }
+                to="/admin/notifications"
+              >
+                <Bell size={18} />
+                Live Notifications
+                {notifData.unreadCount > 0 && (
+                  <span className="sidebar-pill-badge">{notifData.unreadCount}</span>
+                )}
+              </Link>
             </>
           ) : (
             <>
@@ -234,6 +473,22 @@ function Layout({ admin = false, children }) {
               >
                 <Clock3 size={18} />
                 My Rentals
+              </Link>
+
+              <Link
+                className={
+                  location.pathname ===
+                  '/notifications'
+                    ? 'active'
+                    : ''
+                }
+                to="/notifications"
+              >
+                <Bell size={18} />
+                Live Notifications
+                {notifData.unreadCount > 0 && (
+                  <span className="sidebar-pill-badge">{notifData.unreadCount}</span>
+                )}
               </Link>
             </>
           )}
@@ -1623,169 +1878,189 @@ function Payment() {
 // ============================================================
 
 function Rentals() {
+  const [rentals, setRentals] = useState([]);
+  const [billRental, setBillRental] = useState(null);
 
-  const [rentals, setRentals] =
-    useState([]);
-
-
-  useEffect(() => {
-
+  const loadRentals = () => {
     api
       .get('/rentals/mine')
-      .then((response) =>
-        setRentals(response.data)
-      );
+      .then((response) => setRentals(response.data))
+      .catch((err) => console.error(err));
+  };
 
+  useEffect(() => {
+    loadRentals();
+    const interval = setInterval(loadRentals, 4000);
+    return () => clearInterval(interval);
   }, []);
 
+  const exportRentalBillPDF = (rental) => {
+    const doc = new jsPDF();
+    const invNo = `INV-2026-${rental.uniqueId || 'IDX3251'}`;
+
+    doc.setFillColor(15, 23, 42);
+    doc.rect(0, 0, 210, 45, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.setFont('helvetica', 'bold');
+    doc.text('SMARTRENT - OFFICIAL RENTAL BILL', 15, 25);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Smart Equipment Rentals & Management System', 15, 33);
+    doc.text(`Invoice No: ${invNo}`, 135, 33);
+
+    let y = 60;
+    doc.setTextColor(15, 23, 42);
+    doc.setFontSize(12);
+    doc.setFont('helvetica', 'bold');
+    doc.text('BILL TO (CUSTOMER DETAILS):', 15, y);
+    doc.text('RENTAL SUMMARY:', 120, y);
+
+    y += 8;
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'normal');
+    doc.text(`Rental ID: ${rental.uniqueId || 'IDX3251'}`, 120, y);
+
+    y += 6;
+    doc.text(`Mobile: ${rental.mobile || 'N/A'}`, 15, y);
+    doc.text(`Rental Duration: ${rental.days} Days`, 120, y);
+
+    y += 6;
+    doc.text(`Start Date: ${new Date(rental.startDate).toLocaleDateString()}`, 120, y);
+    doc.text(`Status: COMPLETED & RETURNED`, 15, y);
+
+    y += 6;
+    doc.text(`End Date: ${new Date(rental.endDate).toLocaleDateString()}`, 120, y);
+
+    y += 12;
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(226, 232, 240);
+    doc.line(15, y, 195, y);
+
+    y += 10;
+    doc.setFillColor(241, 245, 249);
+    doc.rect(15, y, 180, 10, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.setTextColor(30, 41, 59);
+    doc.text('ITEM DESCRIPTION', 20, y + 7);
+    doc.text('CATEGORY', 95, y + 7);
+    doc.text('DURATION', 135, y + 7);
+    doc.text('TOTAL AMOUNT (Rs.)', 160, y + 7);
+
+    y += 16;
+    doc.setFont('helvetica', 'normal');
+    doc.text(`${rental.product?.name || 'Rental Item'}`, 20, y);
+    doc.text(`${rental.product?.category || 'General'}`, 95, y);
+    doc.text(`${rental.days} Days`, 135, y);
+    doc.text(`Rs. ${rental.totalAmount || 0}`, 160, y);
+
+    if (rental.damageReport?.isDamaged) {
+      y += 10;
+      doc.setTextColor(220, 38, 38);
+      doc.text(`Damage Fine Penalty (${rental.damageReport.damageDetails || 'Item Damage'})`, 20, y);
+      doc.text(`+ Rs. ${rental.damageReport.damageCost || 0}`, 160, y);
+      doc.setTextColor(30, 41, 59);
+    }
+
+    y += 20;
+    doc.setLineWidth(0.5);
+    doc.line(15, y, 195, y);
+
+    y += 12;
+    const damageCost = rental.damageReport?.isDamaged ? (rental.damageReport.damageCost || 0) : 0;
+    const grandTotal = (rental.totalAmount || 0) + damageCost;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(12);
+    doc.text('TOTAL AMOUNT PAID:', 110, y);
+    doc.setTextColor(79, 70, 229);
+    doc.text(`Rs. ${grandTotal}`, 165, y);
+
+    y += 40;
+    doc.setTextColor(100, 116, 139);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'normal');
+    doc.text('Thank you for renting with SmartRent!', 15, y);
+
+    doc.save(`Rental_Bill_${rental.uniqueId || 'IDX3251'}.pdf`);
+  };
 
   return (
-
     <Layout>
-
       <div className="page-title-box">
-
         <div>
-
-          <h1>
-            My Rental Requests
-          </h1>
-
+          <h1>My Rental Requests</h1>
           <p>
-            Track your rental request
-            status, approval updates,
-            and active items.
+            Track real-time request approvals, live rental status, and billing invoices.
           </p>
-
         </div>
-
       </div>
 
-
       {rentals.map((x) => (
-
-        <div
-          className="black-fitted-card"
-          key={x._id}
-        >
-
+        <div className="black-fitted-card" key={x._id}>
           <div>
-
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '10px'
-              }}
-            >
-
-              <span
-                className="id-badge"
-                style={{
-                  fontSize: '11px',
-                  padding: '3px 10px'
-                }}
-              >
-                {x.uniqueId ||
-                  'IDX3251'}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span className="id-badge" style={{ fontSize: '11px', padding: '3px 10px' }}>
+                {x.uniqueId || 'IDX3251'}
               </span>
-
-              <b
-                style={{
-                  fontSize: '17px',
-                  color:
-                    'var(--text-main)'
-                }}
-              >
+              <b style={{ fontSize: '17px', color: 'var(--text-main)' }}>
                 {x.product?.name}
               </b>
-
             </div>
 
-
-            <p
-              style={{
-                color:
-                  'var(--text-muted)',
-                fontSize: '13px',
-                marginTop: '6px'
-              }}
-            >
-              {x.days}
-              {' '}Days • Total: ₹
-              {x.totalAmount}
-              {' '}• Mobile:
-              {' '}
-              {x.mobile || 'N/A'}
+            <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginTop: '6px' }}>
+              {x.days} Days • Total: ₹{x.totalAmount} • Mobile: {x.mobile || 'N/A'}
             </p>
 
+            {x.startDate && x.endDate && (
+              <p style={{ color: 'var(--text-sub)', fontSize: '12px', marginTop: '4px' }}>
+                Dates: {new Date(x.startDate).toLocaleDateString()} to {new Date(x.endDate).toLocaleDateString()}
+              </p>
+            )}
 
-            {x.startDate &&
-              x.endDate && (
-
-                <p
-                  style={{
-                    color:
-                      'var(--text-sub)',
-                    fontSize: '12px',
-                    marginTop: '4px'
-                  }}
-                >
-                  Dates:
-                  {' '}
-                  {new Date(
-                    x.startDate
-                  ).toLocaleDateString()}
-                  {' to '}
-                  {new Date(
-                    x.endDate
-                  ).toLocaleDateString()}
-                </p>
-
-              )}
-
+            {/* REAL-TIME LIFECYCLE MONITORING */}
+            <div style={{ display: 'flex', gap: '6px', alignItems: 'center', marginTop: '10px', flexWrap: 'wrap' }}>
+              <span style={{ fontSize: '10px', color: '#94a3b8', fontWeight: 800 }}>STAGE:</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: 'rgba(99, 102, 241, 0.2)', color: '#a5b4fc', border: '1px solid rgba(99, 102, 241, 0.4)' }}>
+                1. REQUESTED
+              </span>
+              <span style={{ color: '#475569', fontSize: '10px' }}>➔</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: (x.status === 'approved' || x.status === 'returned') ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: (x.status === 'approved' || x.status === 'returned') ? '#10b981' : '#64748b', border: `1px solid ${(x.status === 'approved' || x.status === 'returned') ? 'rgba(16, 185, 129, 0.4)' : '#2d354e'}` }}>
+                2. {x.status === 'rejected' ? 'DECLINED' : 'APPROVED & ACTIVE'}
+              </span>
+              <span style={{ color: '#475569', fontSize: '10px' }}>➔</span>
+              <span className="status-pill" style={{ fontSize: '10px', padding: '2px 8px', background: x.status === 'returned' ? 'rgba(16, 185, 129, 0.2)' : 'rgba(255,255,255,0.05)', color: x.status === 'returned' ? '#10b981' : '#64748b', border: `1px solid ${x.status === 'returned' ? 'rgba(16, 185, 129, 0.4)' : '#2d354e'}` }}>
+                3. RETURNED
+              </span>
+            </div>
           </div>
 
-
-          <div>
-
-            <span
-              className={`status-pill status-${x.status}`}
-            >
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+            <span className={`status-pill status-${x.status}`}>
               {x.status}
             </span>
 
+            {x.status === 'returned' && (
+              <button
+                className="btn btn-green btn-sm"
+                onClick={() => exportRentalBillPDF(x)}
+              >
+                <FileText size={15} /> Download PDF Bill
+              </button>
+            )}
           </div>
-
         </div>
-
       ))}
 
-
       {!rentals.length && (
-
-        <div
-          className="black-fitted-card"
-          style={{
-            justifyContent: 'center',
-            padding: '40px'
-          }}
-        >
-
-          <p
-            style={{
-              color:
-                'var(--text-muted)'
-            }}
-          >
-            You have no active rental
-            requests yet.
+        <div className="black-fitted-card" style={{ justifyContent: 'center', padding: '40px' }}>
+          <p style={{ color: 'var(--text-muted)' }}>
+            You have no active rental requests yet.
           </p>
-
         </div>
-
       )}
-
     </Layout>
   );
 }
@@ -2633,11 +2908,16 @@ function ManageProducts() {
 // ============================================================
 
 function RentalRequests() {
-
+  const location = useLocation();
+  const navigate = useNavigate();
   const [requests, setRequests] = useState([]);
   const [editRental, setEditRental] = useState(null);
   const [damageRental, setDamageRental] = useState(null);
   const [billRental, setBillRental] = useState(null);
+
+  const searchParams = new URLSearchParams(location.search);
+  const actionSuccess = searchParams.get('actionSuccess');
+  const actionUniqueId = searchParams.get('uniqueId') || searchParams.get('id');
 
   const exportRentalBillPDF = (rental) => {
     const doc = new jsPDF();
@@ -2757,9 +3037,9 @@ function RentalRequests() {
 
 
   useEffect(() => {
-
     loadRequests();
-
+    const interval = setInterval(loadRequests, 4000);
+    return () => clearInterval(interval);
   }, []);
 
 
@@ -3267,6 +3547,17 @@ function RentalRequests() {
   return (
 
     <Layout admin>
+
+      {actionSuccess && (
+        <div className="action-success-banner">
+          <div>
+            <b>⚡ Gmail Direct Action Complete:</b> Rental <b>#{actionUniqueId || 'ID'}</b> has been successfully <b>{actionSuccess.toUpperCase()}</b> via direct email link!
+          </div>
+          <button className="action-banner-close" onClick={() => navigate('/admin/requests', { replace: true })}>
+            <X size={16} />
+          </button>
+        </div>
+      )}
 
       <div className="page-title-box">
 
@@ -3999,23 +4290,147 @@ function RentalRequests() {
 
 
 // ============================================================
+// LIVE NOTIFICATIONS & PROCESS ACTIVITY CENTER
+// ============================================================
+
+function NotificationsCenter({ admin = false }) {
+  const [filter, setFilter] = useState('all');
+  const notifData = useRealtimeNotifications();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification, refresh } = notifData;
+
+  const filtered = useMemo(() => {
+    if (filter === 'all') return notifications;
+    if (filter === 'unread') return notifications.filter((n) => !n.isRead);
+    if (filter === 'requested') return notifications.filter((n) => n.type === 'rental_requested');
+    if (filter === 'approved') return notifications.filter((n) => n.type === 'rental_approved');
+    if (filter === 'returned') return notifications.filter((n) => n.type === 'rental_returned');
+    if (filter === 'damage') return notifications.filter((n) => n.type === 'damage_reported');
+    return notifications;
+  }, [notifications, filter]);
+
+  return (
+    <Layout admin={admin}>
+      <div className="page-title-box notif-page-header">
+        <div>
+          <h1>Live Activity & Notifications</h1>
+          <p>Real-time lifecycle monitoring of requests, approvals, returns, and damage assessments.</p>
+        </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          {unreadCount > 0 && (
+            <button className="btn btn-green btn-sm" onClick={markAllAsRead}>
+              <Check size={16} /> Mark All as Read ({unreadCount})
+            </button>
+          )}
+          <button className="btn btn-dark btn-sm" onClick={refresh}>
+            <Sparkles size={16} /> Refresh Feed
+          </button>
+        </div>
+      </div>
+
+      <div className="notif-filter-tabs">
+        <button
+          className={`notif-filter-btn ${filter === 'all' ? 'active' : ''}`}
+          onClick={() => setFilter('all')}
+        >
+          All Activity ({notifications.length})
+        </button>
+        <button
+          className={`notif-filter-btn ${filter === 'unread' ? 'active' : ''}`}
+          onClick={() => setFilter('unread')}
+        >
+          Unread ({unreadCount})
+        </button>
+        <button
+          className={`notif-filter-btn ${filter === 'requested' ? 'active' : ''}`}
+          onClick={() => setFilter('requested')}
+        >
+          📥 Requests
+        </button>
+        <button
+          className={`notif-filter-btn ${filter === 'approved' ? 'active' : ''}`}
+          onClick={() => setFilter('approved')}
+        >
+          ✅ Approvals
+        </button>
+        <button
+          className={`notif-filter-btn ${filter === 'returned' ? 'active' : ''}`}
+          onClick={() => setFilter('returned')}
+        >
+          📦 Returns
+        </button>
+        <button
+          className={`notif-filter-btn ${filter === 'damage' ? 'active' : ''}`}
+          onClick={() => setFilter('damage')}
+        >
+          ⚠️ Damages
+        </button>
+      </div>
+
+      <div>
+        {filtered.map((n) => {
+          const { cls, icon } = getNotifIconInfo(n.type);
+          return (
+            <div key={n._id} className={`notif-card-item ${!n.isRead ? 'unread' : ''}`}>
+              <div className={`notif-icon ${cls}`} style={{ width: '40px', height: '40px', fontSize: '18px' }}>
+                {icon}
+              </div>
+              <div className="notif-card-body">
+                <div className="notif-card-top">
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    {n.uniqueId && (
+                      <span className="id-badge" style={{ fontSize: '10px', padding: '2px 8px' }}>
+                        #{n.uniqueId}
+                      </span>
+                    )}
+                    <h4>{n.title}</h4>
+                  </div>
+                  <span>{formatNotifTime(n.createdAt)}</span>
+                </div>
+                <p className="notif-card-text">{n.message}</p>
+                <div className="notif-card-footer">
+                  <Link
+                    to={admin ? '/admin/requests' : '/rentals'}
+                    className="btn btn-dark btn-sm"
+                    style={{ textDecoration: 'none', padding: '6px 12px', fontSize: '12px' }}
+                  >
+                    {admin ? 'Open in Requests & Approvals' : 'View in My Rentals'} &rarr;
+                  </Link>
+                  {!n.isRead && (
+                    <button className="btn btn-green btn-sm" onClick={(e) => markAsRead(n._id, e)}>
+                      <Check size={14} /> Mark Read
+                    </button>
+                  )}
+                  <button className="btn btn-red btn-sm" onClick={(e) => deleteNotification(n._id, e)}>
+                    <Trash2 size={14} /> Clear
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+
+        {!filtered.length && (
+          <div className="black-fitted-card" style={{ justifyContent: 'center', padding: '40px' }}>
+            <p style={{ color: 'var(--text-muted)' }}>
+              No notification messages match this filter.
+            </p>
+          </div>
+        )}
+      </div>
+    </Layout>
+  );
+}
+
+
+// ============================================================
 // MAIN APP + ROUTER
 // ============================================================
 
 export default function App() {
-
   return (
-
-    <GoogleOAuthProvider
-      clientId={
-        GOOGLE_CLIENT_ID
-      }
-    >
-
+    <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
       <Routes>
-
         {/* HOME */}
-
         <Route
           path="/"
           element={
@@ -4023,26 +4438,11 @@ export default function App() {
           }
         />
 
-
         {/* AUTHENTICATION */}
+        <Route path="/login" element={<Auth />} />
+        <Route path="/signup" element={<Auth signup />} />
 
-        <Route
-          path="/login"
-          element={
-            <Auth />
-          }
-        />
-
-        <Route
-          path="/signup"
-          element={
-            <Auth signup />
-          }
-        />
-
-
-        {/* USER */}
-
+        {/* USER ROUTES */}
         <Route
           path="/browse"
           element={
@@ -4051,8 +4451,6 @@ export default function App() {
             </Guard>
           }
         />
-
-
         <Route
           path="/product/:id"
           element={
@@ -4061,8 +4459,6 @@ export default function App() {
             </Guard>
           }
         />
-
-
         <Route
           path="/payment/:id"
           element={
@@ -4071,8 +4467,6 @@ export default function App() {
             </Guard>
           }
         />
-
-
         <Route
           path="/rentals"
           element={
@@ -4081,10 +4475,16 @@ export default function App() {
             </Guard>
           }
         />
+        <Route
+          path="/notifications"
+          element={
+            <Guard role="user">
+              <NotificationsCenter />
+            </Guard>
+          }
+        />
 
-
-        {/* ADMIN */}
-
+        {/* ADMIN ROUTES */}
         <Route
           path="/admin"
           element={
@@ -4093,8 +4493,6 @@ export default function App() {
             </Guard>
           }
         />
-
-
         <Route
           path="/admin/products"
           element={
@@ -4103,8 +4501,6 @@ export default function App() {
             </Guard>
           }
         />
-
-
         <Route
           path="/admin/requests"
           element={
@@ -4113,23 +4509,18 @@ export default function App() {
             </Guard>
           }
         />
-
-
-        {/* INVALID URL */}
-
         <Route
-          path="*"
+          path="/admin/notifications"
           element={
-            <Navigate
-              to="/login"
-              replace
-            />
+            <Guard role="admin">
+              <NotificationsCenter admin />
+            </Guard>
           }
         />
 
+        {/* INVALID URL */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
-
     </GoogleOAuthProvider>
-
   );
 }

@@ -9,6 +9,7 @@ import auth from './routes/auth.js';
 import products from './routes/products.js';
 import rentals from './routes/rentals.js';
 import payment from './routes/payment.js';
+import notifications from './routes/notifications.js';
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use('/api/auth', auth);
 app.use('/api/products', products);
 app.use('/api/rentals', rentals);
 app.use('/api/payment', payment);
+app.use('/api/notifications', notifications);
 
 // Start server
 connectDB().then(() => {
