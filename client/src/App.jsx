@@ -43,7 +43,6 @@ import {
 import { jsPDF } from 'jspdf';
 
 import { api } from './api';
-import { EMAILJS_CONFIG, sendRentalEmail, sendRealtimeEmail } from './email';
 import { ContactUs } from './ContactUs';
 
 // GOOGLE LOGIN
@@ -1556,40 +1555,18 @@ function Payment() {
 
   const navigate = useNavigate();
 
-  const [uniqueId] =
-    useState(createRentalId);
-
-  const [p, setP] =
-    useState(null);
-
-  const [days, setDays] =
-    useState(1);
-
-  const [mobile, setMobile] =
-    useState('');
-
-  const [isProcessing, setIsProcessing] =
-    useState(false);
-
+  const [successInfo, setSuccessInfo] = useState(null);
+  const [uniqueId] = useState(createRentalId);
+  const [p, setP] = useState(null);
+  const [days, setDays] = useState(1);
+  const [mobile, setMobile] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
-
-    api
-      .get('/products/' + id)
-      .then((response) =>
-        setP(response.data)
-      );
-
+    api.get('/products/' + id).then((response) => setP(response.data));
   }, [id]);
 
-
-  const total = useMemo(
-    () =>
-      (p?.pricePerDay || 0) *
-      days,
-    [p, days]
-  );
-
+  const total = useMemo(() => (p?.pricePerDay || 0) * days, [p, days]);
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
@@ -1602,8 +1579,7 @@ function Payment() {
   };
 
 
-  const submitRequest =
-    async () => {
+  const submitRequest = async () => {
 
       if (
         !/^[6-9]\d{9}$/.test(mobile)
@@ -1643,39 +1619,19 @@ function Payment() {
             }
           );
 
-
         const submittedId =
           response.data.uniqueId ||
           uniqueId;
 
-
-        await sendRentalEmail({
-
-          recipientEmail:
-            getAdminEmail(),
-
-          recipientName:
-            'SmartRent Admin',
-
-          subject:
-            `New rental request: ${submittedId}`,
-
-          status: 'pending',
-
-          rental: {
-            ...response.data,
-            product: p
-          }
-
+        // Server automatically sends Nodemailer email to admin with Approve/Reject buttons.
+        // No duplicate client-side email needed.
+        setSuccessInfo({
+          rentalId: submittedId,
+          productName: p?.name || p?.title || 'Product',
+          days,
+          total,
+          adminEmail: 'sudalai1234@gmail.com'
         });
-
-
-        alert(
-          `Rental request submitted successfully with ID: ${submittedId}`
-        );
-
-
-        navigate('/rentals');
 
       } catch (error) {
 
@@ -1784,15 +1740,90 @@ function Payment() {
 
 
   if (!p) {
-
     return (
       <Layout>
         Loading payment form...
       </Layout>
     );
-
   }
 
+  // ── SUCCESS SCREEN ── shown after payment + rental request is submitted ──
+  if (successInfo) {
+    return (
+      <Layout>
+        <div style={{ maxWidth: '580px', margin: '40px auto' }}>
+          <div style={{
+            background: '#ffffff',
+            border: '1px solid #bbf7d0',
+            borderRadius: '20px',
+            padding: '40px',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(16,185,129,0.12)'
+          }}>
+            <div style={{ fontSize: '56px', marginBottom: '16px' }}>✅</div>
+            <h2 style={{ color: '#065f46', margin: '0 0 8px 0', fontSize: '24px', fontWeight: '800' }}>
+              Rental Request Submitted!
+            </h2>
+            <p style={{ color: '#047857', fontSize: '14px', marginBottom: '24px' }}>
+              Payment verified. Your request has been sent to the admin for approval.
+            </p>
+
+            <div style={{
+              background: '#f0fdf4',
+              border: '1px solid #a7f3d0',
+              borderRadius: '12px',
+              padding: '20px',
+              marginBottom: '24px',
+              textAlign: 'left'
+            }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', fontSize: '14px' }}>
+                <div style={{ color: '#64748b' }}>Rental ID</div>
+                <div style={{ fontWeight: '700', color: '#0f172a' }}>#{successInfo.rentalId}</div>
+                <div style={{ color: '#64748b' }}>Product</div>
+                <div style={{ fontWeight: '700', color: '#0f172a' }}>{successInfo.productName}</div>
+                <div style={{ color: '#64748b' }}>Duration</div>
+                <div style={{ fontWeight: '700', color: '#0f172a' }}>{successInfo.days} Day(s)</div>
+                <div style={{ color: '#64748b' }}>Amount Paid</div>
+                <div style={{ fontWeight: '700', color: '#059669', fontSize: '16px' }}>₹{successInfo.total}</div>
+              </div>
+            </div>
+
+            <div style={{
+              background: '#eff6ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '10px',
+              padding: '14px 18px',
+              marginBottom: '28px',
+              fontSize: '13px',
+              color: '#1e40af',
+              lineHeight: 1.6
+            }}>
+              📧 <strong>Admin notified via email</strong> ({successInfo.adminEmail})<br/>
+              The admin will <strong>Accept or Reject</strong> directly from Gmail.<br/>
+              You will receive a real-time notification and email once a decision is made.
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+              <button
+                className="btn btn-green"
+                onClick={() => navigate('/rentals')}
+                style={{ padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '700' }}
+              >
+                📦 View My Rentals
+              </button>
+              <button
+                className="btn btn-dark btn-sm"
+                onClick={() => navigate('/browse')}
+                style={{ padding: '12px 24px', borderRadius: '10px', fontSize: '14px', fontWeight: '600' }}
+              >
+                Browse More Products
+              </button>
+            </div>
+          </div>
+        </div>
+      </Layout>
+    );
+  }
 
   return (
 
