@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 import jwt from 'jsonwebtoken';
 import Notification from '../models/Notification.js';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'sudalai1234@gmail.com';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || '24205024@nec.edu.in';
 const SERVER_URL = process.env.SERVER_URL || 'http://localhost:5000';
 const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
 const JWT_SECRET = process.env.JWT_SECRET || 'smartrent_secret_key_123';

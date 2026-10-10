@@ -65,15 +65,15 @@ export default function Login() {
               System Admin login details for platform management:
             </p>
             <div className="admin-cred-row">
-              <span>Email: <b>sudalai1234@gmail.com</b></span>
+              <span>Email: <b>24205024@nec.edu.in</b></span>
             </div>
             <div className="admin-cred-row">
-              <span>Password: <b>Admin@123</b></span>
+              <span>Password: <b>Moha&amp;2025#</b></span>
             </div>
             <button
               type="button"
               className="btn-fill-admin"
-              onClick={() => { setEmail('sudalai1234@gmail.com'); setPassword('Admin@123'); }}
+              onClick={() => { setEmail('24205024@nec.edu.in'); setPassword('Moha&2025#'); }}
             >
               ⚡ One-Click Auto-Fill Admin Login
             </button>

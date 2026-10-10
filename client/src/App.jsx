@@ -884,15 +884,15 @@ function Auth({ signup = false }) {
               System Admin login details for platform management:
             </p>
             <div className="admin-cred-row">
-              <span>Email: <b>sudalai1234@gmail.com</b></span>
+              <span>Email: <b>24205024@nec.edu.in</b></span>
             </div>
             <div className="admin-cred-row">
-              <span>Password: <b>Admin@123</b></span>
+              <span>Password: <b>Moha&amp;2025#</b></span>
             </div>
             <button
               type="button"
               className="btn-fill-admin"
-              onClick={() => setF({ ...f, email: 'sudalai1234@gmail.com', password: 'Admin@123' })}
+              onClick={() => setF({ ...f, email: '24205024@nec.edu.in', password: 'Moha&2025#' })}
             >
               ⚡ One-Click Auto-Fill Admin Login
             </button>
@@ -1630,7 +1630,7 @@ function Payment() {
           productName: p?.name || p?.title || 'Product',
           days,
           total,
-          adminEmail: 'sudalai1234@gmail.com'
+          adminEmail: '24205024@nec.edu.in'
         });
 
       } catch (error) {

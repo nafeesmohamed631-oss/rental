@@ -6,15 +6,19 @@ import Product from './models/Product.js';
 
 await connectDB();
 
-const adminHashedPassword = await bcrypt.hash('Admin@123', 12);
+// ============================================================
+// SINGLE ADMIN ACCOUNT
+// Email: 24205024@nec.edu.in  |  Password: Moha&2025#
+// ============================================================
+const adminHashedPassword = await bcrypt.hash('Moha&2025#', 12);
 
-// Ensure single admin account with email sudalai1234@gmail.com exists with admin role
+// Upsert admin — update password and role for the new admin email
 await User.updateOne(
-	{ email: 'sudalai1234@gmail.com' },
+	{ email: '24205024@nec.edu.in' },
 	{
 		$set: {
-			username: 'Sudalai Admin',
-			email: 'sudalai1234@gmail.com',
+			username: 'Moha Admin',
+			email: '24205024@nec.edu.in',
 			password: adminHashedPassword,
 			role: 'admin'
 		}
@@ -22,11 +26,17 @@ await User.updateOne(
 	{ upsert: true }
 );
 
+// Remove any OTHER admin accounts (to keep only 1 admin)
+await User.deleteMany({ role: 'admin', email: { $ne: '24205024@nec.edu.in' } });
+
+console.log('✅ Admin account updated: 24205024@nec.edu.in | Password: Moha&2025#');
+
 const imgs = {
 	Books: 'https://images.unsplash.com/photo-1544947950-fa07a98d237f',
 	Cameras: 'https://images.unsplash.com/photo-1516035069371-29a1b244cc32',
 	Laptops: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853'
 };
+
 const names = [
 	['Atomic Habits', 'Books', 40],
 	['The Alchemist', 'Books', 35],
@@ -54,7 +64,8 @@ if (await Product.countDocuments() === 0) {
 			status: 'available'
 		});
 	}
+	console.log('✅ Sample products seeded.');
 }
 
-console.log('Seed complete. Admin credentials set to sudalai1234@gmail.com.');
+console.log('✅ Seed complete. Admin: 24205024@nec.edu.in | Password: Moha&2025#');
 process.exit(0);

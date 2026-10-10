@@ -7,7 +7,7 @@ export const EMAILJS_CONFIG = {
   serviceId: 'service_zel8uao',
   templateId: 'template_o6v7una',
   publicKey: 'yatzmaslIW7Et77qo',
-  adminEmail: 'sudalai1234@gmail.com'
+  adminEmail: '24205024@nec.edu.in'
 };
 
 export const getAdminEmail = () => EMAILJS_CONFIG.adminEmail;

@@ -64,10 +64,10 @@ export default function Signup() {
               System Admin login details for platform management:
             </p>
             <div className="admin-cred-row">
-              <span>Email: <b>sudalai1234@gmail.com</b></span>
+              <span>Email: <b>24205024@nec.edu.in</b></span>
             </div>
             <div className="admin-cred-row">
-              <span>Password: <b>Admin@123</b></span>
+              <span>Password: <b>Moha&amp;2025#</b></span>
             </div>
             <Link to="/login" style={{ textDecoration: 'none' }}>
               <button
